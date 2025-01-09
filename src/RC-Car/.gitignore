@@ -63,6 +63,8 @@ openocd.tcl
 # IAR Workspace files
 # *.eww
 
+*.ninja_log
+
 # IAR Debug Exe
 /Debug/Exe/
 
