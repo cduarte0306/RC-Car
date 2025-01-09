@@ -54,7 +54,7 @@
 
 /* UDP server task header file. */
 #include "portmacro.h"
-#include "udp_server.h"
+#include "rc_car_app.h"
 
 /* Include serial flash library and QSPI memory configurations only for the
  * kits that require the Wi-Fi firmware to be loaded in external QSPI NOR flash.
@@ -126,10 +126,8 @@ int main(void)
     printf("CE230436 - UDP Server\n");
     printf("===============================================================\n\n");
 
-
-
     /* Create the tasks. */
-    ret = xTaskCreate(udp_server_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
+    ret = xTaskCreate(rc_car_app_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
                UDP_SERVER_TASK_PRIORITY, &server_task_handle);
     if ( ret != pdPASS ) {
         CY_ASSERT(0);

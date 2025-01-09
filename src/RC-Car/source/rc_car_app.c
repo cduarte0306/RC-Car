@@ -38,7 +38,10 @@
 *******************************************************************************/
 
 /* Header file includes */
+#include "cy_crypto_server.h"
 #include "cy_result.h"
+#include "cy_syslib.h"
+#include "cy_utils.h"
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
@@ -46,7 +49,12 @@
 
 /* FreeRTOS header file */
 #include <FreeRTOS.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <task.h>
+#include <timers.h>
+#include <queue.h>
 
 /* Cypress secure socket header file */
 #include "cy_secure_sockets.h"
@@ -56,13 +64,29 @@
 #include "cy_wcm_error.h"
 
 /* UDP server task header file. */
-#include "udp_server.h"
+#include "rc_car_app.h"
+
+#include "cyhal_psoc6_02_124_bga.h"
+#include "netif.h"
+#include "portmacro.h"
+#include "projdefs.h"
+#include "tcp.h"
+#include "wifi-config.h"
+
+#include "utils.h"
+
+#include "lwip/udp.h"
+#include "lwip/mem.h"
+#include "lwip/pbuf.h"
+#include "lwip/ip_addr.h"
+
 
 /*******************************************************************************
 * Macros
 ********************************************************************************/
 /* RTOS related macros for UDP server task. */
 #define RTOS_TASK_TICKS_TO_WAIT                   (1000)
+#define TIMER_TIMEOUT                             (1000)
 
 /* Length of the LED ON/OFF command issued from the UDP server. */
 #define UDP_LED_CMD_LEN                           (1)
@@ -82,33 +106,67 @@
 /* Buffer size to store the incoming messages from server, in bytes. */
 #define MAX_UDP_RECV_BUFFER_SIZE                  (20)
 
+#define QUEUE_SIZE                                (10u)
 
-#define INITIALISER_IPV4_ADDRESS(addr_var, addr_val)  addr_var = { CY_WCM_IP_VER_V4, { .v4 = (uint32_t)(addr_val) } }
-#define MAKE_IPV4_ADDRESS(a, b, c, d)                 ((((uint32_t) d) << 24) | (((uint32_t) c) << 16) | \
-                                                       (((uint32_t) b) << 8) |((uint32_t) a))
+/* Error codes */
+#define UDP_MESSAGE_SIZE_ERR                      (cy_rslt_t)0x00000001U
+#define UDP_CRC_SIZE_ERR                          (cy_rslt_t)0x00000002U
+#define UDP_MSG_ERR                               (cy_rslt_t)0x00000002U
+#define UDP_REPLY_ERR                             (cy_rslt_t)0x00000003U
 
-/* The password length should meet the requirement of the configured security
- * type. e.g. Passworld length should be between 8-63 characters for
- * CY_WCM_SECURITY_WPA2_AES_PSK.
- */
-#define SOFTAP_PASSWORD                              "SOFTAP_PWD"
 
-/* SoftAP Credentials */
-#define SOFTAP_SSID                                  "SOFTAP_SSID"
+/*******************************************************************************
+Enums 
+********************************************************************************/
+/* Connection states */
+typedef enum __attribute__((__packed__)) 
+{
+    DISCONNECTED = 0x00,
+    CONNECTED
+} wifi_connection_states_t;
 
-#define SOFTAP_SECURITY_TYPE                         CY_WCM_SECURITY_WPA2_AES_PSK
-#define SOFTAP_IP_ADDRESS                            MAKE_IPV4_ADDRESS(192, 168, 0,  2)
-#define SOFTAP_NETMASK                               MAKE_IPV4_ADDRESS(255, 255, 255, 0)
-#define SOFTAP_GATEWAY                               MAKE_IPV4_ADDRESS(192, 168, 0,  2)
+/* Command definitions */
+typedef enum __attribute__((__packed__)) 
+{
+    CMD_NOOP = 0x00,
+    CMD_FWD_DIR,
+    CMD_STEER,
+} commands_t;
 
+/*******************************************************************************
+Protocol definitions 
+********************************************************************************/
+typedef struct __attribute__((__packed__))
+{
+    uint32_t   sequence_id;
+    uint16_t   msg_length;
+
+    struct __attribute__((__packed__))
+    {
+        uint8_t    command;
+        val_type_t data;
+    } payload;
+    
+    uint32_t   crc_32;
+} client_req_t;
+
+typedef struct __attribute__((__packed__))
+{
+    uint8_t  acknowledge;
+    uint32_t sequence_id;
+    uint8    command;
+} server_ack_t;
 
 /*******************************************************************************
 * Function Prototypes
 ********************************************************************************/
-static cy_rslt_t connect_to_wifi_ap(void);
 static cy_rslt_t create_wifi_ap(void);
 static cy_rslt_t create_udp_server_socket(void);
 static cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg);
+
+static bool process_command( client_req_t* req );
+
+static void timer_callback( TimerHandle_t xTimer );
 static void isr_button_press( void *callback_arg, cyhal_gpio_event_t event);
 void print_heap_usage(char *msg);
 
@@ -118,6 +176,12 @@ void print_heap_usage(char *msg);
 /* Secure socket variables. */
 cy_socket_sockaddr_t udp_server_addr, peer_addr;
 cy_socket_t server_handle;
+
+wifi_connection_states_t connection_state = DISCONNECTED;
+
+/* Connection timeout timer */
+TimerHandle_t xTimer;
+QueueHandle_t queue;
 
 /*******************************************************************************
 * Global Variables
@@ -147,7 +211,7 @@ cyhal_gpio_callback_data_t cb_data =
 };
 
 /*******************************************************************************
- * Function Name: udp_server_task
+ * Function Name: rc_car_app_task
  *******************************************************************************
  * Summary:
  *  Task used to establish a connection to a remote UDP client.
@@ -159,7 +223,7 @@ cyhal_gpio_callback_data_t cb_data =
  *  void
  *
  *******************************************************************************/
-void udp_server_task(void *arg)
+void rc_car_app_task(void *arg)
 {
     cy_rslt_t result;
 
@@ -174,18 +238,24 @@ void udp_server_task(void *arg)
     cyhal_gpio_register_callback(CYBSP_USER_BTN, &cb_data);
     cyhal_gpio_enable_event(CYBSP_USER_BTN, CYHAL_GPIO_IRQ_FALL, USER_BTN_INTR_PRIORITY, true);
 
-    /* Connect to Wi-Fi AP */
-    // if(connect_to_wifi_ap() != CY_RSLT_SUCCESS )
-    // {
-    //     printf("\n Failed to connect to Wi-Fi AP.\n");
-    //     CY_ASSERT(0);
-    // }
+    /* Create wifi access point */
     if(create_wifi_ap() != CY_RSLT_SUCCESS )
     {
         printf("\n Failed to connect to Wi-Fi AP.\n");
         CY_ASSERT(0);
     }
-    
+
+    /* Create the timer */
+    xTimer = xTimerCreate("Timer", TIMER_TIMEOUT, pdFALSE, (void *)0, timer_callback);
+    if ( xTimer == NULL ) {
+        CY_ASSERT( false );
+    }
+
+    /* Create a queue */
+    queue = xQueueCreate(QUEUE_SIZE, sizeof( server_ack_t ));
+    if ( queue == NULL ) {
+        CY_ASSERT( false );
+    }
 
     /* Secure Sockets initialization */
     result = cy_socket_init();
@@ -204,56 +274,38 @@ void udp_server_task(void *arg)
         CY_ASSERT(0);
     }
 
+    server_ack_t ack;
+
     /* Toggle the LED on/off command sent to client on every button press */
     while(true)
     {
-        /* Wait until a notification is received from the user button ISR. */
-        xTaskNotifyWait(0, 0, &led_state_cmd, portMAX_DELAY);
+        xQueueReceive( queue, (void *const)&ack, portMAX_DELAY );
 
-        /* Send LED ON/OFF command to UDP client. */
-        if(client_connected)
-        {
-            result = cy_socket_sendto(server_handle, &led_state_cmd, UDP_LED_CMD_LEN, CY_SOCKET_FLAGS_NONE,
+        result = cy_socket_sendto(server_handle, (void *const )&ack, sizeof( server_ack_t ), CY_SOCKET_FLAGS_NONE,
                                       &peer_addr, sizeof(cy_socket_sockaddr_t), &bytes_sent);
-            if(result == CY_RSLT_SUCCESS )
-            {
-                if(led_state_cmd == LED_ON_CMD)
-                {
-                    printf("LED ON command sent to UDP client\n");
-                }
-                else
-                {
-                    printf("LED OFF command sent to UDP client\n");
-                }
-            }
-            else
-            {
-                printf("Failed to send command to client. Error: %"PRIu32"\n", result);
-            }
-            
-            print_heap_usage("After sending LED ON/OFF command to client");
+        if(result != CY_RSLT_SUCCESS )
+        {
+            printf("Failed to transmit to the server\r\n");
         }
-      }
+    }
  }
 
 
+/**
+ * @brief Create a wifi access point. The PSoC will host a Wifi access point, to which a computer will
+ * have to connect in order to communicate with the device wirelessly.
+ * 
+ * @return cy_rslt_t 
+ */
 cy_rslt_t create_wifi_ap( void )
 {
     cy_rslt_t result;
     cy_wcm_ap_config_t ap_conf;
     cy_wcm_ip_address_t ipv4_addr;
 
-    cy_wcm_connect_params_t wifi_conn_param;
-
     cy_wcm_config_t wifi_config = {
             .interface = CY_WCM_INTERFACE_TYPE_AP_STA
     };
-
-    cy_wcm_ip_address_t ip_address;
-
-    /* Variable to track the number of connection retries to the Wi-Fi AP specified
-     * by WIFI_SSID macro */
-    int conn_retries = 0;
 
     /* Initialize Wi-Fi connection manager. */
     result = cy_wcm_init(&wifi_config);
@@ -283,78 +335,6 @@ cy_rslt_t create_wifi_ap( void )
     return result;
 }
 
-
-/*******************************************************************************
- * Function Name: connect_to_wifi_ap()
- *******************************************************************************
- * Summary:
- *  Connects to Wi-Fi AP using the user-configured credentials, retries up to a
- *  configured number of times until the connection succeeds.
- *
- *******************************************************************************/
-cy_rslt_t connect_to_wifi_ap(void)
-{
-    cy_rslt_t result;
-
-    /* Variables used by Wi-Fi connection manager. */
-    cy_wcm_connect_params_t wifi_conn_param;
-
-    cy_wcm_config_t wifi_config = {
-            .interface = CY_WCM_INTERFACE_TYPE_STA
-    };
-
-    cy_wcm_ip_address_t ip_address;
-
-    /* Variable to track the number of connection retries to the Wi-Fi AP specified
-     * by WIFI_SSID macro */
-    int conn_retries = 0;
-
-    /* Initialize Wi-Fi connection manager. */
-    result = cy_wcm_init(&wifi_config);
-
-    if (result != CY_RSLT_SUCCESS)
-    {
-        printf("Wi-Fi Connection Manager initialization failed!\n");
-        return result;
-    }
-    printf("Wi-Fi Connection Manager initialized. \n");
-
-    /* Set the Wi-Fi SSID, password and security type. */
-    memset(&wifi_conn_param, 0, sizeof(cy_wcm_connect_params_t));
-    memcpy(wifi_conn_param.ap_credentials.SSID, WIFI_SSID, sizeof(WIFI_SSID));
-    memcpy(wifi_conn_param.ap_credentials.password, WIFI_PASSWORD, sizeof(WIFI_PASSWORD));
-    wifi_conn_param.ap_credentials.security = WIFI_SECURITY_TYPE;
-
-    /* Join the Wi-Fi AP. */
-    for(conn_retries = 0; conn_retries < MAX_WIFI_CONN_RETRIES; conn_retries++ )
-    {
-        result = cy_wcm_connect_ap(&wifi_conn_param, &ip_address);
-
-        if(result == CY_RSLT_SUCCESS)
-        {
-            printf("Successfully connected to Wi-Fi network '%s'.\n",
-                    wifi_conn_param.ap_credentials.SSID);
-            printf("IP Address Assigned: %d.%d.%d.%d\n", (uint8)ip_address.ip.v4,
-                    (uint8)(ip_address.ip.v4 >> 8), (uint8)(ip_address.ip.v4 >> 16),
-                    (uint8)(ip_address.ip.v4 >> 24));
-
-            /* IP address and UDP port number of the UDP server */
-            udp_server_addr.ip_address.ip.v4 = ip_address.ip.v4;
-            udp_server_addr.ip_address.version = CY_SOCKET_IP_VER_V4;
-            udp_server_addr.port = UDP_SERVER_PORT;
-            return result;
-        }
-
-        printf("Connection to Wi-Fi network failed with error code %d."
-                "Retrying in %d ms...\n", (int)result, WIFI_CONN_RETRY_INTERVAL_MSEC);
-        vTaskDelay(pdMS_TO_TICKS(WIFI_CONN_RETRY_INTERVAL_MSEC));
-    }
-
-    /* Stop retrying after maximum retry attempts. */
-    printf("Exceeded maximum Wi-Fi connection attempts\n");
-
-    return result;
-}
 
 /*******************************************************************************
  * Function Name: create_udp_server_socket
@@ -406,12 +386,14 @@ cy_rslt_t create_udp_server_socket(void)
  *  Callback function to handle incoming  message from UDP client
  *
  *******************************************************************************/
-cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg)
-{
+cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
     cy_rslt_t result;
 
     /* Variable to store the number of bytes received. */
     uint32_t bytes_received = 0;
+    client_req_t* req  = NULL;
+    server_ack_t  reply;
+    bool ret;
 
     /* Buffer to store data received from Client. */
     char message_buffer[MAX_UDP_RECV_BUFFER_SIZE] = {0};
@@ -421,50 +403,63 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg)
                                 CY_SOCKET_FLAGS_NONE, &peer_addr, NULL,
                                 &bytes_received);
 
-    message_buffer[bytes_received] = '\0';
-
-    if(result == CY_RSLT_SUCCESS)
+    if ( result != CY_RSLT_SUCCESS )
     {
-        if(START_COMM_MSG == message_buffer[0])
-        {
-            client_connected = true;
-            printf("UDP Client available on IP Address: %d.%d.%d.%d \n", (uint8)peer_addr.ip_address.ip.v4,
-                    (uint8)(peer_addr.ip_address.ip.v4 >> 8), (uint8)(peer_addr.ip_address.ip.v4 >> 16),
-                    (uint8)(peer_addr.ip_address.ip.v4 >> 24));
-        }
-        else
-        {
-            printf("\nAcknowledgement from UDP Client:\n");
-
-            /* Print the message received from UDP client. */
-            printf("%s",message_buffer);
-
-            /* Set the LED state based on the acknowledgment received from the UDP client. */
-            if(strcmp(message_buffer, LED_ON_ACK_MSG) == 0)
-            {
-                led_state = CYBSP_LED_STATE_ON;
-            }
-            else
-            {
-                led_state = CYBSP_LED_STATE_OFF;
-            }
-            printf("\n");
-        }
-
-    }
-    else
-    {
-        printf("Failed to receive message from client. Error: %"PRIu32"\n", result);
         return result;
     }
-    
-    print_heap_usage("After receiving ACK from client");
 
-    printf("===============================================================\n");
-    printf("Press the user button to send LED ON/OFF command to the UDP client\n");
+    /* Parse the command */
+    if ( bytes_received != sizeof( client_req_t ) ) {
+        return UDP_MESSAGE_SIZE_ERR;
+    }
 
-    return result;
+    req = ( client_req_t* )( message_buffer );
+    if ( req->msg_length != ( bytes_received - sizeof( uint32_t ) - sizeof( uint16_t ) - sizeof( uint32_t ) ) ) {
+        return UDP_MESSAGE_SIZE_ERR;
+    }
+
+    const uint32_t crc = crc32(( char* )&req->payload, sizeof( req->payload ));
+    if ( req->crc_32 != crc ) {
+        return UDP_CRC_SIZE_ERR;
+    }
+
+    /* Process the incoming network command and submit a reply to the client */
+    ret = process_command( req );
+    if ( !ret ) {
+        reply.acknowledge = false;
+        reply.command     = 0;
+        reply.sequence_id = 0;
+    } else {
+        reply.acknowledge = true;
+        reply.command     = req->payload.command;
+        reply.sequence_id = req->sequence_id;
+    }
+
+    /* Reply to the client */
+    ret = xQueueSend(queue, ( const void * )&reply, portMAX_DELAY);
+    if ( !ret ) {
+        return UDP_REPLY_ERR;
+    }
+
+    return CY_RSLT_SUCCESS;
 }
+
+
+static bool process_command( client_req_t* req ) {
+    if ( req == NULL ) {
+        return false;
+    }
+
+    switch ( req->payload.command ) {
+        case CMD_FWD_DIR: break;
+        case CMD_STEER: break;
+
+        default: return false;
+    }
+    
+    return true;
+}
+
 
 /*******************************************************************************
  * Function Name: isr_button_press
@@ -506,6 +501,13 @@ void isr_button_press( void *callback_arg, cyhal_gpio_event_t event)
     /* Force a context switch if xHigherPriorityTaskWoken is now set to pdTRUE. */
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
+
+
+void timer_callback( TimerHandle_t xTimer )
+{
+    connection_state = DISCONNECTED;
+}
+
 
 /* [] END OF FILE */
 
