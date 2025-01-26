@@ -42,6 +42,7 @@
 #include "cy_result.h"
 #include "cy_syslib.h"
 #include "cy_utils.h"
+#include "cycfg_pins.h"
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
@@ -66,6 +67,7 @@
 /* UDP server task header file. */
 #include "rc_car_app.h"
 
+#include "cyhal_gpio.h"
 #include "cyhal_psoc6_02_124_bga.h"
 #include "netif.h"
 #include "portmacro.h"
@@ -114,6 +116,8 @@
 #define UDP_MSG_ERR                               (cy_rslt_t)0x00000002U
 #define UDP_REPLY_ERR                             (cy_rslt_t)0x00000003U
 
+#define CY_SOCKET_INADDR_ANY (0x00000000)
+
 
 /*******************************************************************************
 Enums 
@@ -152,9 +156,16 @@ typedef struct __attribute__((__packed__))
 
 typedef struct __attribute__((__packed__))
 {
-    uint8_t  acknowledge;
-    uint32_t sequence_id;
-    uint8    command;
+    uint8_t  acknoledge;
+    uint16_t message_length;
+    
+    struct __attribute__((__packed__))
+    {
+        uint32_t sequence_id;
+        uint8    command;
+    } payload;
+    
+    uint32   crc;
 } server_ack_t;
 
 /*******************************************************************************
@@ -174,8 +185,11 @@ void print_heap_usage(char *msg);
 * Global Variables
 ********************************************************************************/
 /* Secure socket variables. */
-cy_socket_sockaddr_t udp_server_addr, peer_addr;
+cy_socket_sockaddr_t udp_server_addr;
 cy_socket_t server_handle;
+
+cy_socket_sockaddr_t client_addr;
+uint32_t client_addr_len = sizeof(client_addr);
 
 wifi_connection_states_t connection_state = DISCONNECTED;
 
@@ -226,20 +240,22 @@ cyhal_gpio_callback_data_t cb_data =
 void rc_car_app_task(void *arg)
 {
     cy_rslt_t result;
+    bool ret;
 
     /* Variable to store number of bytes sent over UDP socket. */
     uint32_t bytes_sent = 0;
-
-    /* Variable to receive LED ON/OFF command from the user button ISR. */
-    uint32_t led_state_cmd = LED_OFF_CMD;
 
     /* Initialize the user button (CYBSP_USER_BTN) and register interrupt on falling edge. */
     cyhal_gpio_init(CYBSP_USER_BTN, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_PULLUP, CYBSP_BTN_OFF);
     cyhal_gpio_register_callback(CYBSP_USER_BTN, &cb_data);
     cyhal_gpio_enable_event(CYBSP_USER_BTN, CYHAL_GPIO_IRQ_FALL, USER_BTN_INTR_PRIORITY, true);
 
-    /* Create wifi access point */
-    if(create_wifi_ap() != CY_RSLT_SUCCESS )
+    cyhal_gpio_init(USER_LED, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, CYBSP_BTN_OFF);
+
+    cyhal_gpio_write( USER_LED, true );
+
+    /* Create Wi-Fi access point. The client should be able to connect over Wi-Fi */
+    if (create_wifi_ap() != CY_RSLT_SUCCESS)
     {
         printf("\n Failed to connect to Wi-Fi AP.\n");
         CY_ASSERT(0);
@@ -247,14 +263,21 @@ void rc_car_app_task(void *arg)
 
     /* Create the timer */
     xTimer = xTimerCreate("Timer", TIMER_TIMEOUT, pdFALSE, (void *)0, timer_callback);
-    if ( xTimer == NULL ) {
-        CY_ASSERT( false );
+    if (xTimer == NULL)
+    {
+        CY_ASSERT(false);
+    }
+
+    ret = xTimerStart( xTimer, 1000 );
+    if ( !ret ) {
+        CY_ASSERT(false);
     }
 
     /* Create a queue */
-    queue = xQueueCreate(QUEUE_SIZE, sizeof( server_ack_t ));
-    if ( queue == NULL ) {
-        CY_ASSERT( false );
+    queue = xQueueCreate(QUEUE_SIZE, sizeof(server_ack_t));
+    if (queue == NULL)
+    {
+        CY_ASSERT(false);
     }
 
     /* Secure Sockets initialization */
@@ -266,29 +289,30 @@ void rc_car_app_task(void *arg)
     }
     printf("Secure Sockets initialized\n");
 
-    /* Create UDP Server*/
+    /* Create UDP Server */
     result = create_udp_server_socket();
     if (result != CY_RSLT_SUCCESS)
     {
-        printf("UDP Server Socket creation failed. Error: %"PRIu32"\n", result);
+        printf("UDP Server Socket creation failed. Error: %" PRIu32 "\n", result);
         CY_ASSERT(0);
     }
 
     server_ack_t ack;
 
-    /* Toggle the LED on/off command sent to client on every button press */
-    while(true)
+    /* Handle communication with the client */
+    while (true)
     {
-        xQueueReceive( queue, (void *const)&ack, portMAX_DELAY );
+        xQueueReceive(queue, (void *const)&ack, portMAX_DELAY);
 
-        result = cy_socket_sendto(server_handle, (void *const )&ack, sizeof( server_ack_t ), CY_SOCKET_FLAGS_NONE,
-                                      &peer_addr, sizeof(cy_socket_sockaddr_t), &bytes_sent);
-        if(result != CY_RSLT_SUCCESS )
+        result = cy_socket_sendto(server_handle, (void *const)&ack, sizeof(server_ack_t), CY_SOCKET_FLAGS_NONE,
+                                  &client_addr, client_addr_len, &bytes_sent);
+
+        if (result != CY_RSLT_SUCCESS)
         {
-            printf("Failed to transmit to the server\r\n");
+            printf("Failed to transmit to the client\r\n");
         }
     }
- }
+}
 
 
 /**
@@ -319,6 +343,7 @@ cy_rslt_t create_wifi_ap( void )
     ap_conf.channel = 1;
     memcpy(ap_conf.ap_credentials.SSID, SOFTAP_SSID, strlen(SOFTAP_SSID) + 1);
     memcpy(ap_conf.ap_credentials.password, SOFTAP_PASSWORD, strlen(SOFTAP_PASSWORD) + 1);
+    
     ap_conf.ap_credentials.security = SOFTAP_SECURITY_TYPE;
     ap_conf.ip_settings.ip_address = ap_sta_mode_ip_settings.ip_address;
     ap_conf.ip_settings.netmask = ap_sta_mode_ip_settings.netmask;
@@ -353,10 +378,13 @@ cy_rslt_t create_udp_server_socket(void)
             .arg = NULL
     };
 
+    udp_server_addr.port = UDP_SERVER_PORT; // Your server port
+    udp_server_addr.ip_address.version = CY_SOCKET_IP_VER_V4;
+    udp_server_addr.ip_address.ip.v4   = CY_SOCKET_INADDR_ANY;
+
     /* Create a UDP server socket. */
     result = cy_socket_create(CY_SOCKET_DOMAIN_AF_INET, CY_SOCKET_TYPE_DGRAM, CY_SOCKET_IPPROTO_UDP, &server_handle);
-    if (result != CY_RSLT_SUCCESS)
-    {
+    if (result != CY_RSLT_SUCCESS) {
         return result;
     }
 
@@ -364,20 +392,19 @@ cy_rslt_t create_udp_server_socket(void)
     result = cy_socket_setsockopt(server_handle, CY_SOCKET_SOL_SOCKET,
             CY_SOCKET_SO_RECEIVE_CALLBACK,
             &udp_recv_option, sizeof(cy_socket_opt_callback_t));
-    if (result != CY_RSLT_SUCCESS)
-    {
+    if (result != CY_RSLT_SUCCESS) {
         return result;
     }
 
     /* Bind the UDP socket created to Server IP address and port. */
     result = cy_socket_bind(server_handle, &udp_server_addr, sizeof(udp_server_addr));
-    if (result == CY_RSLT_SUCCESS)
-    {
-         printf("Socket bound to port: %d\n", udp_server_addr.port);
+    if (result == CY_RSLT_SUCCESS) {
+        printf("Socket bound to port: %d\n", udp_server_addr.port);
     }
 
     return result;
 }
+
 
 /*******************************************************************************
  * Function Name: udp_server_recv_handler
@@ -398,10 +425,13 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
     /* Buffer to store data received from Client. */
     char message_buffer[MAX_UDP_RECV_BUFFER_SIZE] = {0};
 
+    /* Here, we reset the timer since the connection is still alive */
+    xTimerReset( xTimer, portMAX_DELAY );
+    cyhal_gpio_write( USER_LED, false );
+
     /* Receive incoming message from UDP server. */
-    result = cy_socket_recvfrom(server_handle, message_buffer, MAX_UDP_RECV_BUFFER_SIZE,
-                                CY_SOCKET_FLAGS_NONE, &peer_addr, NULL,
-                                &bytes_received);
+    result = cy_socket_recvfrom(server_handle, message_buffer, sizeof(client_req_t), CY_SOCKET_FLAGS_NONE,
+                                    &client_addr, &client_addr_len, &bytes_received);
 
     if ( result != CY_RSLT_SUCCESS )
     {
@@ -426,13 +456,11 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
     /* Process the incoming network command and submit a reply to the client */
     ret = process_command( req );
     if ( !ret ) {
-        reply.acknowledge = false;
-        reply.command     = 0;
-        reply.sequence_id = 0;
+        reply.payload.command     = 0;
+        reply.payload.sequence_id = 0;
     } else {
-        reply.acknowledge = true;
-        reply.command     = req->payload.command;
-        reply.sequence_id = req->sequence_id;
+        reply.payload.command     = req->payload.command;
+        reply.payload.sequence_id = req->sequence_id;
     }
 
     /* Reply to the client */
@@ -445,15 +473,21 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
 }
 
 
+/**
+ * @brief Process incoming UDP commands
+ * 
+ * @param req 
+ * @return true 
+ * @return false 
+ */
 static bool process_command( client_req_t* req ) {
     if ( req == NULL ) {
         return false;
     }
 
     switch ( req->payload.command ) {
-        case CMD_FWD_DIR: break;
-        case CMD_STEER: break;
-
+        case CMD_FWD_DIR : break;
+        case CMD_STEER   : break;
         default: return false;
     }
     
@@ -505,6 +539,7 @@ void isr_button_press( void *callback_arg, cyhal_gpio_event_t event)
 
 void timer_callback( TimerHandle_t xTimer )
 {
+    cyhal_gpio_write( USER_LED, true );
     connection_state = DISCONNECTED;
 }
 

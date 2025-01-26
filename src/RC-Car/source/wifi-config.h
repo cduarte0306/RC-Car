@@ -10,14 +10,14 @@
  * type. e.g. Passworld length should be between 8-63 characters for
  * CY_WCM_SECURITY_WPA2_AES_PSK.
  */
-#define SOFTAP_PASSWORD                              "SOFTAP_PWD"
+#define SOFTAP_PASSWORD                              ""
 
 /* SoftAP Credentials */
-#define SOFTAP_SSID                                  "SOFTAP_SSID"
+#define SOFTAP_SSID                                  "Carlos's RC Car"
 
-#define SOFTAP_SECURITY_TYPE                         CY_WCM_SECURITY_WPA2_AES_PSK
-#define SOFTAP_IP_ADDRESS                            MAKE_IPV4_ADDRESS(192, 168, 0,  2)
+#define SOFTAP_SECURITY_TYPE                         CY_WCM_SECURITY_OPEN
+#define SOFTAP_IP_ADDRESS                            MAKE_IPV4_ADDRESS(192, 168, 1,  10)
 #define SOFTAP_NETMASK                               MAKE_IPV4_ADDRESS(255, 255, 255, 0)
-#define SOFTAP_GATEWAY                               MAKE_IPV4_ADDRESS(192, 168, 0,  2)
+#define SOFTAP_GATEWAY                               MAKE_IPV4_ADDRESS(192, 168, 1,  100)
 
 #endif
