@@ -126,6 +126,8 @@ int main(void)
     printf("CE230436 - UDP Server\n");
     printf("===============================================================\n\n");
 
+    rc_car_init();
+
     /* Create the tasks. */
     ret = xTaskCreate(rc_car_app_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
                UDP_SERVER_TASK_PRIORITY, &server_task_handle);
