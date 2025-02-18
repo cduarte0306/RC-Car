@@ -80,7 +80,7 @@ typedef enum __attribute__((__packed__))
 TaskHandle_t network_handle;
 
 
-static int process_command( client_req_t* req );
+static bool process_command( client_req_t* req );
 
 
 /**
@@ -122,30 +122,33 @@ void rc_car_app_task(void *arg)
 {
     /* Handle communication with the client */
     while (true)
-    {
+    {      
         vTaskDelay( 1 );
     }
 }
 
 /**
- * @brief Process incoming UDP commands
+ * @brief This function is passed as a handler to the network driver. It is to be called 
+ * upon succesful reception of a UDP message.
  * 
  * @param req 
  * @return true 
  * @return false 
  */
-static int process_command( client_req_t* req ) {
-    if ( req == NULL ) {
-        return false;
+static bool process_command( client_req_t* req ) {
+    if ( req == NULL )
+    {
+        return -1;
     }
 
-    switch ( req->payload.command ) {
-        case CMD_DIR   : printf("Direction command received: %i\r\n", req->payload.data.i32); break;
-        case CMD_STEER : printf("Steer command received: %i\r\n",     req->payload.data.i32); break;
-        default: return false;
+    switch ( req->payload.command )
+    {
+        case CMD_DIR   : printf("Direction command received: %i\r\n",   req->payload.data.i32); break;
+        case CMD_STEER : printf("Steer command received: %i\r\n",       req->payload.data.i32); break;
+        default:         printf("ERROR: Command %u not recognized\r\n", req->payload.command ); return false;
     }
     
-    return true;
+    return 0;
 }
 
 /* [] END OF FILE */

@@ -417,7 +417,7 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
     uint32_t bytes_received = 0;
     client_req_t* req  = NULL;
     server_ack_t  reply;
-    bool ret;
+    BaseType_t ret;
 
     /* Buffer to store data received from Client. */
     char message_buffer[MAX_UDP_RECV_BUFFER_SIZE] = {0};

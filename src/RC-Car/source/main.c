@@ -44,6 +44,7 @@
 *******************************************************************************/
 
 /* Header file includes */
+#include "cy_utils.h"
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
@@ -96,6 +97,7 @@ int main(void)
 {
     cy_rslt_t result;
     BaseType_t ret;
+    int res = 0;
 
     /* Initialize the device and board peripherals */
     result = cybsp_init();
@@ -126,7 +128,8 @@ int main(void)
     printf("CE230436 - UDP Server\n");
     printf("===============================================================\n\n");
 
-    rc_car_init();
+    res = rc_car_init();
+    CY_ASSERT( res != 0 );
 
     /* Create the tasks. */
     ret = xTaskCreate(rc_car_app_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
@@ -140,7 +143,6 @@ int main(void)
 
     /* Should never get here. */
     CY_ASSERT(0);
-
 }
 
 /* [] END OF FILE */

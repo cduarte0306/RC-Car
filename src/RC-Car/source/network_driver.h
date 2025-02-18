@@ -41,6 +41,8 @@
 #define NETWORK_DRIVER_H
 
 #include <inttypes.h>
+#include <stdbool.h>
+
 #include "utils.h"
 
 
@@ -91,7 +93,7 @@ typedef struct __attribute__((__packed__))
 } client_req_t;
 
 
-typedef int (*message_reception_callback)( client_req_t* );
+typedef bool (*message_reception_callback)( client_req_t* );
 
 /*******************************************************************************
 * Function Prototypes
