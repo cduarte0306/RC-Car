@@ -236,7 +236,6 @@ void network_task(void *arg)
     CY_ASSERT( callback != NULL );
 
     cy_rslt_t result;
-    bool ret;
 
     /* Variable to store number of bytes sent over UDP socket. */
     uint32_t bytes_sent = 0;
