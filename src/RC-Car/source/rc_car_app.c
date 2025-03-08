@@ -78,8 +78,6 @@ typedef enum __attribute__((__packed__))
 
 
 TaskHandle_t network_handle;
-
-
 static bool process_command( client_req_t* req );
 
 
@@ -94,7 +92,7 @@ int rc_car_init( void )
 {
     BaseType_t ret;
 
-    set_network_callback( process_command );
+    set_network_callback( process_command );  // Event based command processing
     ret = xTaskCreate(network_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
                UDP_SERVER_TASK_PRIORITY, &network_handle);
     if ( ret != pdPASS ) {
@@ -110,7 +108,7 @@ int rc_car_init( void )
  *******************************************************************************
  * Summary:
  *  Task used to establish a connection to a remote UDP client.
- *
+ *isr_button_press
  * Parameters:
  *  void *args : Task parameter defined during task creation (unused)
  *
@@ -127,13 +125,14 @@ void rc_car_app_task(void *arg)
     }
 }
 
+
 /**
  * @brief This function is passed as a handler to the network driver. It is to be called 
  * upon succesful reception of a UDP message.
  * 
- * @param req 
- * @return true 
- * @return false 
+ * @param req Pointer to request structure
+ * @return true: Command processed successfully
+ * @return false: Failed to process command
  */
 static bool process_command( client_req_t* req ) {
     if ( req == NULL )
