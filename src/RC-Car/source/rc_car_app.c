@@ -78,8 +78,6 @@ typedef enum __attribute__((__packed__))
 
 
 TaskHandle_t network_handle;
-
-
 static bool process_command( client_req_t* req );
 
 
