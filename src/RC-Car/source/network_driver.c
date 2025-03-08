@@ -156,8 +156,8 @@ typedef struct __attribute__((__packed__))
 static cy_rslt_t create_wifi_ap(void);
 static cy_rslt_t create_udp_server_socket(void);
 static cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg);
+static void wifi_event_callback(cy_wcm_event_t event, cy_wcm_event_data_t *event_data);
 
-static void timer_callback( TimerHandle_t xTimer );
 static void isr_button_press( void *callback_arg, cyhal_gpio_event_t event);
 void print_heap_usage(char *msg);
 
@@ -174,7 +174,6 @@ uint32_t client_addr_len = sizeof(client_addr);
 wifi_connection_states_t connection_state = DISCONNECTED;
 
 /* Connection timeout timer */
-TimerHandle_t xTimer;
 QueueHandle_t queue;
 
 message_reception_callback callback = NULL;
@@ -203,8 +202,8 @@ extern TaskHandle_t server_task_handle;
 
 cyhal_gpio_callback_data_t cb_data =
 {
-.callback = isr_button_press,
-.callback_arg = NULL
+    .callback = isr_button_press,
+    .callback_arg = NULL
 };
 
 
@@ -258,16 +257,11 @@ void network_task(void *arg)
         CY_ASSERT(0);
     }
 
-    /* Create the timer */
-    xTimer = xTimerCreate("Timer", TIMER_TIMEOUT, pdFALSE, (void *)0, timer_callback);
-    if (xTimer == NULL)
+    /* Set event callback */
+    if ( cy_wcm_register_event_callback(wifi_event_callback) != CY_RSLT_SUCCESS )
     {
-        CY_ASSERT(false);
-    }
-
-    ret = xTimerStart( xTimer, 1000 );
-    if ( !ret ) {
-        CY_ASSERT(false);
+        printf("Failed to register network event callback\r\n");
+        CY_ASSERT(0);
     }
 
     /* Create a queue */
@@ -422,10 +416,6 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
     /* Buffer to store data received from Client. */
     char message_buffer[MAX_UDP_RECV_BUFFER_SIZE] = {0};
 
-    /* Here, we reset the timer since the connection is still alive */
-    xTimerReset( xTimer, portMAX_DELAY );
-    cyhal_gpio_write( USER_LED, false );
-
     /* Receive incoming message from UDP server. */
     result = cy_socket_recvfrom(server_handle, message_buffer, sizeof(client_req_t), CY_SOCKET_FLAGS_NONE,
                                     &client_addr, &client_addr_len, &bytes_received);
@@ -512,10 +502,29 @@ void isr_button_press( void *callback_arg, cyhal_gpio_event_t event)
 }
 
 
-void timer_callback( TimerHandle_t xTimer )
+/**
+ * @brief Wifi event callback
+ * 
+ * @param event Event triggered. See cy_wcm.c for event definition.
+ * @param event_data 
+ */
+void wifi_event_callback(cy_wcm_event_t event, cy_wcm_event_data_t *event_data)
 {
-    cyhal_gpio_write( USER_LED, true );
-    connection_state = DISCONNECTED;
+    switch (event)
+    {
+        case CY_WCM_EVENT_CONNECTED:
+            printf("Client connected to AP\n");
+            cyhal_gpio_write( USER_LED, false );
+            break;
+
+        case CY_WCM_EVENT_DISCONNECTED:
+            printf("Client disconnected from AP\n");
+            cyhal_gpio_write( USER_LED, true );
+            break;
+
+        default:
+            break;
+    }
 }
 
 
