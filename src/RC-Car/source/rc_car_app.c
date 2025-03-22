@@ -63,6 +63,20 @@
 #include "network_driver.h"
 #include "portmacro.h"
 
+#if defined (CY_USING_HAL)
+    #include "cyhal_hwmgr.h"
+#endif /* defined (CY_USING_HAL) */
+
+
+#define srss_0_rtc_0_10_MONTH_OFFSET (28U)
+#define srss_0_rtc_0_MONTH_OFFSET (24U)
+#define srss_0_rtc_0_10_DAY_OFFSET (20U)
+#define srss_0_rtc_0_DAY_OFFSET (16U)
+#define srss_0_rtc_0_1000_YEAR_OFFSET (12U)
+#define srss_0_rtc_0_100_YEAR_OFFSET (8U)
+#define srss_0_rtc_0_10_YEAR_OFFSET (4U)
+#define srss_0_rtc_0_YEAR_OFFSET (0U)
+
 
 #define UDP_SERVER_TASK_STACK_SIZE                (5 * 1024)
 #define UDP_SERVER_TASK_PRIORITY                  (1)
@@ -76,8 +90,9 @@ typedef enum __attribute__((__packed__))
     CMD_STEER,
 } commands_t;
 
-
 TaskHandle_t network_handle;
+
+
 static bool process_command( client_req_t* req );
 
 
@@ -88,19 +103,22 @@ static bool process_command( client_req_t* req );
             - Failed to set the callback
             - Failed to start the network thread
  */
-int rc_car_init( void )
+int rc_car_init(void)
 {
     BaseType_t ret;
 
-    set_network_callback( process_command );  // Event based command processing
+    /* Start network task */
+    set_network_callback(process_command);
     ret = xTaskCreate(network_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
-               UDP_SERVER_TASK_PRIORITY, &network_handle);
-    if ( ret != pdPASS ) {
+                      UDP_SERVER_TASK_PRIORITY, &network_handle);
+    if (ret != pdPASS)
+    {
         return -1;
     }
 
     return 0;
 }
+
 
 
 /*******************************************************************************
@@ -149,6 +167,7 @@ static bool process_command( client_req_t* req ) {
     
     return 0;
 }
+
 
 /* [] END OF FILE */
 

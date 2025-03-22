@@ -74,6 +74,9 @@
 #define UDP_SERVER_MAX_PENDING_CONNECTIONS        (3)
 #define UDP_SERVER_RECV_TIMEOUT_MS                (500)
 
+/* NTP macros */
+#define NTP_PORT                                  (123)  // Default NTP port
+
 
 /*******************************************************************************
 Protocol definitions 
@@ -91,6 +94,24 @@ typedef struct __attribute__((__packed__))
     
     uint32_t   crc_32;
 } client_req_t;
+
+/* NTP protocol */
+typedef struct __attribute__((__packed__))
+{
+    uint8_t    leap_indicator;
+    uint8_t    version;
+    uint8_t    mode;
+    uint8_t    stratum;
+    uint8_t    poll;
+    uint8_t    precision;
+    uint32_t   root_delay;
+    uint32_t   root_dispersion;
+    uint32_t   reference_id;
+    uint32_t   reference_timestamp[2];
+    uint32_t   originate_timestamp[2];
+    uint32_t   receive_timestamp[2];
+    uint32_t   transmit_timestamp[2];
+} ntp_packet_t;
 
 
 typedef bool (*message_reception_callback)( client_req_t* );
