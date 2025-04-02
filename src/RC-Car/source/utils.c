@@ -11,6 +11,12 @@
 
 #include "utils.h"
 #include <stdint.h>
+#include <sys/_timeval.h>
+
+#include "cy8c624abzi_s2d44.h"
+#include "cy_tcpwm_counter.h"
+#include "cy_tcpwm_pwm.h"
+#include "cyhal.h"
 
 
 static const uint32_t crc32_table[256] = {
@@ -58,4 +64,70 @@ uint32_t crc32(char *buffer, uint32_t buffer_length) {
     }
 
     return ~crc;
+}
+
+
+/* Returns time in tv format */
+void xGetTimeTV( struct timeval* tv ) {
+    uint32_t sec1, usec;
+    uint32_t sec2;
+
+    do {
+        sec1 = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_SECONDS);
+        usec = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_MICROSECONDS);
+        sec2 = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_SECONDS);
+    } while (sec1 != sec2);
+
+    tv->tv_sec  = sec1;  // Extract the microseconds
+    tv->tv_usec = usec;       // Extract the seconds
+}
+
+
+void xSetTime( struct timeval* tv ) {
+    Cy_TCPWM_Counter_SetCounter(TCPWM0,TCPWM_SECONDS, tv->tv_sec);
+    Cy_TCPWM_Counter_SetCounter(TCPWM0,TCPWM_MICROSECONDS, tv->tv_usec);
+}
+
+
+/**
+ * @brief Adjusts the timer'sm time in seconds
+ * 
+ * @param seconds_offset 
+ * @param fraction_offset 
+ * @param mode 
+ */
+void adjustTimer( int32_t seconds_offset, int32_t fraction_offset, uint8_t mode ) {
+    uint32_t microseconds = (uint32_t)((uint64_t)(fraction_offset / 4294967296ULL) * 1000000);
+    uint32_t seconds = seconds_offset - UNIX_OFFSET;
+
+    switch( mode ) {
+        case CLOCK_STEP:
+            Cy_TCPWM_Counter_SetCounter(TCPWM0, TCPWM_SECONDS, seconds);
+            break;
+
+        case CLOCK_SLEW:
+            
+
+            uint32_t sec = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_SECONDS);
+            uint32_t usec = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_MICROSECONDS);
+
+            sec += seconds;
+            usec += microseconds;
+
+            if ( usec > 1000000 ) {
+                sec++;
+                usec -= 1000000;
+            } else if ( usec < 0 ) {
+                sec--;
+                usec += 1000000;
+            }
+
+            Cy_TCPWM_Counter_SetCounter(TCPWM0, TCPWM_SECONDS, sec);
+            Cy_TCPWM_Counter_SetCounter(TCPWM0, TCPWM_MICROSECONDS, usec);
+
+            break;
+
+        default:
+            break;
+    }
 }

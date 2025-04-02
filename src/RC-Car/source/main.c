@@ -129,7 +129,7 @@ int main(void)
     printf("===============================================================\n\n");
 
     res = rc_car_init();
-    CY_ASSERT( res != 0 );
+    CY_ASSERT( res == 0 );
 
     /* Create the tasks. */
     ret = xTaskCreate(rc_car_app_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,

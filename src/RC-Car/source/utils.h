@@ -14,6 +14,18 @@
 
 
 #include <stdint.h>
+#include <sys/time.h>
+
+
+/* Scenario: Enable Counter */
+#define TCPWM_MICROSECONDS   (0UL)
+#define TCPWM_SECONDS        (1UL)
+
+#define UNIX_OFFSET          (2208988800UL)
+
+#define TVTOTS(seconds, fraction, tv) \
+    seconds = tv.tv_sec + UNIX_OFFSET; \
+    fraction = (uint32_t)(((uint64_t)(tv.tv_usec * 4294967296)) / 1000000.0);
 
 
 typedef union
@@ -25,8 +37,15 @@ typedef union
     uint8_t  u8;
 } val_type_t;
 
+enum {
+    CLOCK_STEP,
+    CLOCK_SLEW
+};
+
 
 uint32_t crc32( char* buffer, uint32_t buffer_length );
+void xGetTimeTV( struct timeval* tv );
 
+void adjustTimer( int32_t seconds_offset, int32_t fraction_offset, uint8_t mode );
 
 #endif

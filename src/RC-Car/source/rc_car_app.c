@@ -53,6 +53,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <task.h>
 #include <timers.h>
 #include <queue.h>
@@ -60,8 +61,10 @@
 /* UDP server task header file. */
 #include "rc_car_app.h"
 
+#include "cyhal_general_types.h"
 #include "network_driver.h"
 #include "portmacro.h"
+#include "utils.h"
 
 #if defined (CY_USING_HAL)
     #include "cyhal_hwmgr.h"
@@ -79,6 +82,7 @@
 
 
 #define UDP_SERVER_TASK_STACK_SIZE                (5 * 1024)
+
 #define UDP_SERVER_TASK_PRIORITY                  (1)
 
 
@@ -90,10 +94,10 @@ typedef enum __attribute__((__packed__))
     CMD_STEER,
 } commands_t;
 
-TaskHandle_t network_handle;
 
+TaskHandle_t network_handle = NULL;
 
-static bool process_command( client_req_t* req );
+static bool process_command( void* pbuf, uint16 len );
 
 
 /**
@@ -107,8 +111,20 @@ int rc_car_init(void)
 {
     BaseType_t ret;
 
+    /* Initialize the timer */
+    Cy_TCPWM_PWM_Enable(TCPWM0, TCPWM_MICROSECONDS);
+    Cy_TCPWM_TriggerStart_Single(TCPWM0, TCPWM_MICROSECONDS);
+
+    Cy_TCPWM_PWM_Enable(TCPWM0, TCPWM_MICROSECONDS);
+    Cy_TCPWM_TriggerStart_Single(TCPWM0, TCPWM_SECONDS);
+
+    network_callbacks_t callbacks = {
+        .command_received = process_command,
+        .ntp_reply_received = NULL
+    };
+
     /* Start network task */
-    set_network_callback(process_command);
+    set_network_callback(callbacks);
     ret = xTaskCreate(network_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
                       UDP_SERVER_TASK_PRIORITY, &network_handle);
     if (ret != pdPASS)
@@ -152,11 +168,13 @@ void rc_car_app_task(void *arg)
  * @return true: Command processed successfully
  * @return false: Failed to process command
  */
-static bool process_command( client_req_t* req ) {
-    if ( req == NULL )
+static bool process_command( void* pbuf, uint16 len ) {
+    if ( pbuf == NULL || (len < sizeof(client_req_t)) )
     {
         return -1;
     }
+
+    client_req_t* req = (client_req_t*)pbuf;
 
     switch ( req->payload.command )
     {
@@ -167,7 +185,6 @@ static bool process_command( client_req_t* req ) {
     
     return 0;
 }
-
 
 /* [] END OF FILE */
 

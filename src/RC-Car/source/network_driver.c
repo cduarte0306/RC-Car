@@ -78,6 +78,7 @@
 #include "portmacro.h"
 #include "projdefs.h"
 #include "tcp.h"
+#include "utils.h"
 #include "wifi-config.h"
 
 #include "lwip/ip_addr.h"
@@ -122,6 +123,12 @@
 
 #define CY_SOCKET_INADDR_ANY (0x00000000)
 
+#define NTP_SERVER_TASK_STACK_SIZE                (1 * 1024)
+
+#define NTP_SERVER_TASK_PRIORITY                  (1)
+#define MICROSECONDS_TO_FRACTION( x ) (uint32_t)((uint64_t)(x) * 4294967296ULL / 1000000)
+
+
 /*******************************************************************************
 Enums
 ********************************************************************************/
@@ -137,6 +144,13 @@ typedef enum __attribute__((__packed__)) {
   CMD_DIR,
   CMD_STEER,
 } commands_t;
+
+typedef enum {
+    NTP_WAIT_FOR_ARP,
+    NTP_REQUEST,
+    NTP_REPLY,
+    NTP_SLEEP
+} ntp_states_t;
 
 typedef struct __attribute__((__packed__)) {
   uint8_t acknowledge;
@@ -161,6 +175,7 @@ static void wifi_event_callback(cy_wcm_event_t event,
                                 cy_wcm_event_data_t *event_data);
 
 static void isr_button_press(void *callback_arg, cyhal_gpio_event_t event);
+static void ntp_thread( void* arg );
 
 /*******************************************************************************
  * Global Variables
@@ -182,12 +197,15 @@ static wifi_connection_states_t connection_state = DISCONNECTED;
 
 /* Connection timeout timer */
 static QueueHandle_t queue;
-static message_reception_callback callback = NULL;
+static message_reception_callback udp_reply_callback = NULL;
+static message_reception_callback ntp_reply_callback = NULL;
 
-/* RTC variables */
-cyhal_rtc_t rtc_obj;
+TaskHandle_t ntp_handle     = NULL;
+ntp_states_t ntp_state = NTP_REQUEST;
 
-static uint8_t buffer[1500];
+ntp_packet_t ntp;
+
+
 
 /*******************************************************************************
  * Global Variables
@@ -216,8 +234,9 @@ cyhal_gpio_callback_data_t cb_data = {.callback = isr_button_press,
  *
  * @param _callback Pointer to the callback
  */
-void set_network_callback(message_reception_callback _callback) {
-  callback = _callback;
+void set_network_callback(network_callbacks_t _callback) {
+    udp_reply_callback = _callback.command_received;
+    ntp_reply_callback = _callback.ntp_reply_received;
 }
 
 /*******************************************************************************
@@ -234,9 +253,11 @@ void set_network_callback(message_reception_callback _callback) {
  *
  *******************************************************************************/
 void network_task(void *arg) {
-    CY_ASSERT(callback != NULL);
+    CY_ASSERT( udp_reply_callback != NULL);
 
     cy_rslt_t result;
+
+    memset( &ntp, 0, sizeof( ntp_packet_t ));
 
     /* Variable to store number of bytes sent over UDP socket. */
     uint32_t bytes_sent = 0;
@@ -281,32 +302,6 @@ void network_task(void *arg) {
     }
     printf("Secure Sockets initialized\n");
 
-    /* Initialize RTC */
-    result = cyhal_rtc_init(&rtc_obj);
-    if (result != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: RTC initialization failed!\n");
-        CY_ASSERT(0);
-    }
-
-    /* Set the initial date and time */
-    struct tm initial_time = {
-        .tm_sec = 0,
-        .tm_min = 0,
-        .tm_hour = 12,
-        .tm_mday = 1,
-        .tm_mon = 0,  // January (0-based)
-        .tm_year = 125, // Years since 1900 (2025 - 1900)
-        .tm_wday = 3   // Wednesday
-    };
-
-    result = cyhal_rtc_write(&rtc_obj, &initial_time);
-    if (result != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to set RTC time!\n");
-        CY_ASSERT(0);
-    }
-
     /* Create UDP Server */
     result = create_udp_server_socket();
     if (result != CY_RSLT_SUCCESS) {
@@ -316,6 +311,13 @@ void network_task(void *arg) {
 
     server_ack_t ack;
     UBaseType_t ret;
+
+    /* Crete NTP thread */
+    ret = xTaskCreate(ntp_thread, "NTP task", NTP_SERVER_TASK_STACK_SIZE, NULL, NTP_SERVER_TASK_STACK_SIZE, &ntp_handle);
+    if (ret != pdPASS)
+    {
+        CY_ASSERT(0);
+    }
 
     /* Handle communication with the client */
     while (true) {
@@ -434,14 +436,14 @@ cy_rslt_t create_udp_server_socket(void) {
         return result;
     }
 
-    result = cy_socket_setsockopt(ntp_client_handle, CY_SOCKET_SOL_SOCKET,
+    result = cy_socket_setsockopt(ntp_socket_handle, CY_SOCKET_SOL_SOCKET,
                                     CY_SOCKET_SO_RECEIVE_CALLBACK, &ntp_client_option,
                                     sizeof(cy_socket_opt_callback_t));
     if (result != CY_RSLT_SUCCESS) {
         return result;
     }
     
-    result = cy_socket_bind(ntp_client_handle, &ntp_server_addr, sizeof(ntp_server_addr));
+    result = cy_socket_bind(ntp_socket_handle, &ntp_server_addr, sizeof(ntp_server_addr));
     if (result == CY_RSLT_SUCCESS) {
         printf("Socket bound to port: %d\n", ntp_server_addr.port);
     }
@@ -458,6 +460,7 @@ cy_rslt_t create_udp_server_socket(void) {
  *******************************************************************************/
 cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
     cy_rslt_t result;
+    static bool task_resumed = false;
 
     /* Variable to store the number of bytes received. */
     uint32_t bytes_received = 0;
@@ -472,6 +475,13 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
     result = cy_socket_recvfrom(server_handle, message_buffer,
                                 sizeof(client_req_t), CY_SOCKET_FLAGS_NONE,
                                 &client_addr, &client_addr_len, &bytes_received);
+
+    /* Wake up the NTP task */
+    if ( !task_resumed )
+    {
+        vTaskResume(ntp_handle);
+        task_resumed = true;
+    }
 
     if (result != CY_RSLT_SUCCESS) {
         return result;
@@ -494,7 +504,7 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
     }
 
     /* Process the incoming network command and submit a reply to the client */
-    ret = callback(req);
+    ret = udp_reply_callback(req, sizeof(client_req_t));
     if (!ret) {
         reply.payload.command = 0;
         reply.payload.sequence_id = 0;
@@ -526,17 +536,13 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
  *  bool : true if NTP packet is sent successfully, false otherwise
  *
  *******************************************************************************/
-cy_rslt_t ntp_receive_handler(cy_socket_t socket_handle, void *arg) {
+cy_rslt_t ntp_receive_handler(cy_socket_t socket_handle, void *arg)
+{
     cy_rslt_t result;
-
-    /* Variable to store the number of bytes received. */
     uint32_t bytes_received = 0;
 
-    /* Buffer to store data received from NTP server. */
     ntp_packet_t ntp_packet = {0};
-    // cyhal_rtc_time_t rtc_time;
 
-    /* Receive incoming message from NTP server. */
     result = cy_socket_recvfrom(ntp_socket_handle, (void *)&ntp_packet,
                                 sizeof(ntp_packet_t), CY_SOCKET_FLAGS_NONE,
                                 &client_addr, &client_addr_len, &bytes_received);
@@ -545,20 +551,46 @@ cy_rslt_t ntp_receive_handler(cy_socket_t socket_handle, void *arg) {
         return result;
     }
 
-    /* Here, we perform the time correction */
-    // uint32_t T4_sec = 
+    ntp_packet_t* req = &ntp_packet;
 
-    uint32_t T1_sec = lwip_ntohl( ntp_packet.originate_timestamp[0]);
-    uint32_t T1_frac = lwip_ntohl( ntp_packet.originate_timestamp[1]);
+    // Convert received timestamps from network to host byte order
+    const uint32_t T1      = lwip_ntohl(req->originate_timestamp[0]);
+    const uint32_t T1_frac = lwip_ntohl(req->originate_timestamp[1]);
 
-    uint32_t T2_sec = lwip_ntohl( ntp_packet.receive_timestamp[0]);
-    uint32_t T2_frac = lwip_ntohl( ntp_packet.receive_timestamp[1]);
+    const uint32_t T2      = lwip_ntohl(req->receive_timestamp[0]);
+    const uint32_t T2_frac = lwip_ntohl(req->receive_timestamp[1]);
 
-    uint32_t T3_sec = lwip_ntohl(ntp_packet.transmit_timestamp[0]);
-    uint32_t T3_frac = lwip_ntohl(ntp_packet.transmit_timestamp[1]);
+    const uint32_t T3      = lwip_ntohl(req->transmit_timestamp[0]);
+    const uint32_t T3_frac = lwip_ntohl(req->transmit_timestamp[1]);
+
+    // Get local receive time (T4)
+    struct timeval time;
+    xGetTimeTV(&time);
+
+    const uint32_t T4      = (uint32_t)time.tv_sec;
+    const uint32_t T4_frac = (uint32_t)(((uint64_t)time.tv_usec << 32) / 1000000);
+
+    // Calculate time offset: ((T2 - T1) + (T3 - T4)) / 2
+    int32_t offset      = ((int32_t)(T2 - T1) + (int32_t)(T3 - T4)) / 2;
+    int32_t offset_frac = ((int32_t)(T2_frac - T1_frac) + (int32_t)(T3_frac - T4_frac)) / 2;
+
+    if ( (offset < -1) || (offset > 1) ) {
+        adjustTimer(offset, offset_frac, CLOCK_STEP);
+    } else {
+        adjustTimer(offset, offset_frac, CLOCK_SLEW);
+    }
+
+    // Store last valid NTP packet
+    memcpy(&ntp, req, sizeof(ntp_packet_t));
+
+    // Update LI/VN/Mode field — e.g. to version 4 server, no warning
+    ntp.li_vn_mode = (0 << 6) | (4 << 3) | 3;  // LI=0, VN=4, Mode=3 (server)
+
+    ntp_state = NTP_SLEEP;
 
     return CY_RSLT_SUCCESS;
 }
+
 
 /*******************************************************************************
  * Function Name: isr_button_press
@@ -606,22 +638,72 @@ void isr_button_press(void *callback_arg, cyhal_gpio_event_t event) {
 void wifi_event_callback(cy_wcm_event_t event,
                          cy_wcm_event_data_t *event_data) {
     switch (event) {
-        case CY_WCM_EVENT_CONNECTED:
+        case CY_WCM_EVENT_STA_JOINED_SOFTAP:
             printf("Client connected to AP\n");
             cyhal_gpio_write(USER_LED, false);
             break;
 
-        case CY_WCM_EVENT_DISCONNECTED:
+        case CY_WCM_EVENT_STA_LEFT_SOFTAP:
             printf("Client disconnected from AP\n");
             cyhal_gpio_write(USER_LED, true);
             break;
 
-        case CY_WCM_EVENT_CONNECT_FAILED:
-            printf("Failed to connect to AP\n");
-            break;
-
         default:
             break;
+    }
+}
+
+
+/**
+ * @brief NTP thread
+ * 
+ * @param arg 
+ */
+static void ntp_thread( void* arg ) {
+
+    ( void ) arg;
+    vTaskSuspend(ntp_handle);
+
+    while (1)
+    {
+        switch ( ntp_state )
+        {
+            case NTP_WAIT_FOR_ARP:{
+
+                break;
+            }
+
+            case NTP_REQUEST: {
+                struct timeval time;
+                
+                /* Get the timestamp */
+                xGetTimeTV( &time );
+                
+                ntp.transmit_timestamp[0] = lwip_htonl(time.tv_sec + UNIX_OFFSET);
+                ntp.transmit_timestamp[1] = lwip_htonl(MICROSECONDS_TO_FRACTION(time.tv_usec));
+                ntp_do_send( &ntp );
+
+                ntp_state = NTP_REPLY;
+                break;
+            }
+
+            case NTP_REPLY: {
+                uint8_t counter = 0;
+                while ( counter < 15 ) {
+                    vTaskDelay( 1000 );
+                    counter++;
+                }
+
+                ntp_state = NTP_SLEEP;
+                break;
+            }
+                
+            case NTP_SLEEP:
+                vTaskDelay( 5000 );
+
+                ntp_state = NTP_REQUEST;
+                break;
+        }
     }
 }
 
@@ -656,6 +738,7 @@ bool ntp_do_send(ntp_packet_t *ntp_packet) {
     result = cy_socket_sendto(ntp_socket_handle, (void *const)ntp_packet,
                               sizeof(ntp_packet_t), CY_SOCKET_FLAGS_NONE,
                               &ntp_server_addr, sizeof(ntp_server_addr), &bytes_sent);
+
     if ( result != CY_RSLT_SUCCESS ) {
         return false;
     }

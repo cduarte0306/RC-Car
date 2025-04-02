@@ -42,6 +42,7 @@
 
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "utils.h"
 
@@ -98,29 +99,39 @@ typedef struct __attribute__((__packed__))
 /* NTP protocol */
 typedef struct __attribute__((__packed__))
 {
-    uint8_t    leap_indicator;
-    uint8_t    version;
-    uint8_t    mode;
-    uint8_t    stratum;
-    uint8_t    poll;
-    uint8_t    precision;
-    uint32_t   root_delay;
-    uint32_t   root_dispersion;
-    uint32_t   reference_id;
-    uint32_t   reference_timestamp[2];
-    uint32_t   originate_timestamp[2];
-    uint32_t   receive_timestamp[2];
-    uint32_t   transmit_timestamp[2];
+    uint8_t     li_vn_mode;              // 2 bits LI | 3 bits VN | 3 bits Mode
+    uint8_t     stratum;
+    uint8_t     poll;
+    int8_t      precision;
+
+    uint32_t    root_delay;
+    uint32_t    root_dispersion;
+    uint32_t    reference_id;
+
+    uint32_t    reference_timestamp[2];  // [0] = seconds, [1] = fraction
+    uint32_t    originate_timestamp[2];
+    uint32_t    receive_timestamp[2];
+    uint32_t    transmit_timestamp[2];
 } ntp_packet_t;
 
 
-typedef bool (*message_reception_callback)( client_req_t* );
+typedef bool (*message_reception_callback)( void*, uint16_t );
+
+
+/* Network event callbacks */
+typedef struct {
+    message_reception_callback command_received;
+    message_reception_callback ntp_reply_received;
+} network_callbacks_t;
+
 
 /*******************************************************************************
 * Function Prototypes
 ********************************************************************************/
-void set_network_callback(message_reception_callback _callback);
+void set_network_callback(network_callbacks_t _callback);
 void network_task(void *arg);
+
+bool ntp_do_send(ntp_packet_t *ntp_packet);
 
 #endif /* UDP_SERVER_H_ */
 
