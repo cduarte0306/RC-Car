@@ -54,7 +54,17 @@ static const uint32_t crc32_table[256] = {
     0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94, 0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
 };
 
+static int32_t microseconds = 0;
+static int32_t seconds = 0;
 
+
+/**
+ * @brief Calculates CRC32 checksum for a given buffer
+ * 
+ * @param buffer Pointer to buffer
+ * @param buffer_length Length of buffer
+ * @return uint32_t CRC-32 result
+ */
 uint32_t crc32(char *buffer, uint32_t buffer_length) {
     uint32_t crc = 0xFFFFFFFFu;
     
@@ -78,8 +88,8 @@ void xGetTimeTV( struct timeval* tv ) {
         sec2 = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_SECONDS);
     } while (sec1 != sec2);
 
-    tv->tv_sec  = sec1;  // Extract the microseconds
-    tv->tv_usec = usec;       // Extract the seconds
+    tv->tv_sec  = sec1 + seconds; // Extract the microseconds
+    tv->tv_usec = usec + microseconds; // Extract the seconds
 }
 
 
@@ -97,34 +107,18 @@ void xSetTime( struct timeval* tv ) {
  * @param mode 
  */
 void adjustTimer( int32_t seconds_offset, int32_t fraction_offset, uint8_t mode ) {
-    uint32_t microseconds = (uint32_t)((uint64_t)(fraction_offset / 4294967296ULL) * 1000000);
-    uint32_t seconds = seconds_offset - UNIX_OFFSET;
+    uint32_t fractionalOffset = (uint32_t)(((int64_t)fraction_offset / FRACTION_MAX) * 1000000);
 
     switch( mode ) {
         case CLOCK_STEP:
-            Cy_TCPWM_Counter_SetCounter(TCPWM0, TCPWM_SECONDS, seconds);
+            // The seconds offset in this case is a straight setting from the sever
+            seconds      = seconds_offset - UNIX_OFFSET;
+            microseconds = (fraction_offset / FRACTION_MAX) * 1000000;
             break;
 
         case CLOCK_SLEW:
-            
-
-            uint32_t sec = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_SECONDS);
-            uint32_t usec = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_MICROSECONDS);
-
-            sec += seconds;
-            usec += microseconds;
-
-            if ( usec > 1000000 ) {
-                sec++;
-                usec -= 1000000;
-            } else if ( usec < 0 ) {
-                sec--;
-                usec += 1000000;
-            }
-
-            Cy_TCPWM_Counter_SetCounter(TCPWM0, TCPWM_SECONDS, sec);
-            Cy_TCPWM_Counter_SetCounter(TCPWM0, TCPWM_MICROSECONDS, usec);
-
+            // We just adjust the microseconds and ignore the seconds
+            microseconds += fractionalOffset;
             break;
 
         default:

@@ -543,6 +543,7 @@ cy_rslt_t ntp_receive_handler(cy_socket_t socket_handle, void *arg)
 
     ntp_packet_t ntp_packet = {0};
 
+    /* Read from the socket */
     result = cy_socket_recvfrom(ntp_socket_handle, (void *)&ntp_packet,
                                 sizeof(ntp_packet_t), CY_SOCKET_FLAGS_NONE,
                                 &client_addr, &client_addr_len, &bytes_received);
@@ -575,7 +576,7 @@ cy_rslt_t ntp_receive_handler(cy_socket_t socket_handle, void *arg)
     int32_t offset_frac = ((int32_t)(T2_frac - T1_frac) + (int32_t)(T3_frac - T4_frac)) / 2;
 
     if ( (offset < -1) || (offset > 1) ) {
-        adjustTimer(offset, offset_frac, CLOCK_STEP);
+        adjustTimer(T3, T3_frac, CLOCK_STEP);
     } else {
         adjustTimer(offset, offset_frac, CLOCK_SLEW);
     }
@@ -585,7 +586,6 @@ cy_rslt_t ntp_receive_handler(cy_socket_t socket_handle, void *arg)
 
     // Update LI/VN/Mode field — e.g. to version 4 server, no warning
     ntp.li_vn_mode = (0 << 6) | (4 << 3) | 3;  // LI=0, VN=4, Mode=3 (server)
-
     ntp_state = NTP_SLEEP;
 
     return CY_RSLT_SUCCESS;

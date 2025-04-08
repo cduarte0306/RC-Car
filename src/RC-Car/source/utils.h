@@ -22,6 +22,7 @@
 #define TCPWM_SECONDS        (1UL)
 
 #define UNIX_OFFSET          (2208988800UL)
+#define FRACTION_MAX         (4294967296ULL)
 
 #define TVTOTS(seconds, fraction, tv) \
     seconds = tv.tv_sec + UNIX_OFFSET; \
