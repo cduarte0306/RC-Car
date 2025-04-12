@@ -44,7 +44,6 @@
 *******************************************************************************/
 
 /* Header file includes */
-#include "cy_utils.h"
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
@@ -54,8 +53,8 @@
 #include <task.h>
 
 /* UDP server task header file. */
-#include "portmacro.h"
 #include "rc_car_app.h"
+
 
 /* Include serial flash library and QSPI memory configurations only for the
  * kits that require the Wi-Fi firmware to be loaded in external QSPI NOR flash.
@@ -107,7 +106,7 @@ int main(void)
     }
 
     /* Enable global interrupts */
-    __enable_irq();
+    
 
     /* Initialize retarget-io to use the debug UART port */
     cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX, CY_RETARGET_IO_BAUDRATE);
@@ -132,7 +131,7 @@ int main(void)
     CY_ASSERT( res == 0 );
 
     /* Create the tasks. */
-    ret = xTaskCreate(rc_car_app_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
+    ret = xTaskCreate(rc_car_app_task, "rc car task", UDP_SERVER_TASK_STACK_SIZE, NULL,
                UDP_SERVER_TASK_PRIORITY, &server_task_handle);
     if ( ret != pdPASS ) {
         CY_ASSERT(0);
@@ -143,6 +142,7 @@ int main(void)
 
     /* Should never get here. */
     CY_ASSERT(0);
+
 }
 
 /* [] END OF FILE */
