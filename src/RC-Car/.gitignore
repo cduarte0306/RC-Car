@@ -63,8 +63,6 @@ openocd.tcl
 # IAR Workspace files
 # *.eww
 
-*.ninja_log
-
 # IAR Debug Exe
 /Debug/Exe/
 
@@ -78,7 +76,7 @@ openocd.tcl
 /Obj/*.pbi.*
 
 # Log files
-**.log
+*.log
 
 # IAR backup files
 Backup*
@@ -149,3 +147,5 @@ Thumbs.db:encryptable
 ehthumbs.db
 ehthumbs_vista.db
 [Dd]esktop.ini
+
+*/mtb_shared

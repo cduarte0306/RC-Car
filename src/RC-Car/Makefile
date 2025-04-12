@@ -46,7 +46,7 @@ TARGET=APP_CY8CPROTO-062-4343W
 #
 # If APPNAME is edited, ensure to update or regenerate launch
 # configurations for your IDE.
-APPNAME=RC-Car
+APPNAME=mtb-example-wifi-udp-server
 
 # Name of toolchain to use. Options include:
 #
