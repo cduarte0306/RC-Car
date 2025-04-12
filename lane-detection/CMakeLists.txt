@@ -1,6 +1,7 @@
 ﻿cmake_minimum_required(VERSION 3.10)
-project(RC-CAR)
+project(RC-CAR-lane-detection)
 
+# Find OpenCV package
 find_package(OpenCV REQUIRED)
 
 # Include directories
@@ -10,18 +11,18 @@ include_directories(
 )
 
 # Print OpenCV details (for debugging)
-message(STATUS "OpenCV_INCLWUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
+message(STATUS "OpenCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCV_LIBS: ${OpenCV_LIBS}")
-
 
 # Add source files
 set(SOURCES
-    ads.cpp
-    lane-detection.cpp
+    src/adas.cpp
+    src/lane-detection.cpp
+    src/twinlitenet_dnn.cpp
 )
 
 set(HEADERS
-    ads.hpp
+    include/adas.hpp
 )
 
 set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
@@ -36,6 +37,13 @@ target_link_libraries(lane-detection ${OpenCV_LIBS})
 if(WIN32)
     set_target_properties(lane-detection PROPERTIES
         VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/src/lane-detection/bin"
+    )
+
+    # Copy OpenCV DLLs to the output directory
+    add_custom_command(TARGET lane-detection POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${OpenCV_DIR}/x64/vc15/bin/opencv_world412.dll
+        $<TARGET_FILE_DIR:lane-detection>
     )
 endif()
 

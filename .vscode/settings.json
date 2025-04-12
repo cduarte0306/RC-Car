@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory": "C:/Users/cayod/OneDrive/Documents/Repos/RC-Car/src/lane-detection",
+    "cmake.sourceDirectory": "C:/Users/cayod/OneDrive/Documents/Repos/RC-Car/lane-detection",
     "files.associations": {
         "stdexcept": "cpp"
     }
