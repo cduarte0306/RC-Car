@@ -38,9 +38,12 @@
 *******************************************************************************/
 
 /* Header file includes */
+#include "cy8c624abzi_s2d44.h"
 #include "cy_crypto_server.h"
 #include "cy_result.h"
 #include "cy_syslib.h"
+#include "cy_tcpwm.h"
+#include "cy_tcpwm_counter.h"
 #include "cy_utils.h"
 #include "cycfg_pins.h"
 #include "cyhal.h"
@@ -62,10 +65,20 @@
 
 #include "network_driver.h"
 #include "portmacro.h"
+#include "utils.h"
+
+#if defined (CY_USING_HAL)
+    #include "cyhal_hwmgr.h"
+#endif /* defined (CY_USING_HAL) */
 
 
 #define UDP_SERVER_TASK_STACK_SIZE                (5 * 1024)
 #define UDP_SERVER_TASK_PRIORITY                  (1)
+
+#define TCPWM_SPEED_SENSOR                        (2UL)
+#define TCPWM_SPEED_REFERENCE                     (3UL)
+
+#define ULTRASONIC_CONVERSION                     (0.001379f)
 
 
 /* Command definitions */
@@ -79,6 +92,7 @@ typedef enum __attribute__((__packed__))
 
 TaskHandle_t network_handle;
 static bool process_command( client_req_t* req );
+static void read_speed( void );
 
 
 /**
@@ -92,8 +106,17 @@ int rc_car_init( void )
 {
     BaseType_t ret;
 
+    Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SPEED_SENSOR);
+    Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SPEED_REFERENCE );
+
     set_network_callback( process_command );  // Event based command processing
     ret = xTaskCreate(network_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
+               UDP_SERVER_TASK_PRIORITY, &network_handle);
+    if ( ret != pdPASS ) {
+        return -1;
+    }
+
+    ret = xTaskCreate(rc_car_app_task, "RC task", UDP_SERVER_TASK_STACK_SIZE, NULL,
                UDP_SERVER_TASK_PRIORITY, &network_handle);
     if ( ret != pdPASS ) {
         return -1;
@@ -120,9 +143,16 @@ void rc_car_app_task(void *arg)
 {
     /* Handle communication with the client */
     while (true)
-    {      
+    {
+        read_speed();
         vTaskDelay( 1 );
     }
+}
+
+
+static void read_speed( void ) {
+    uint32_t cap = Cy_TCPWM_Counter_GetCapture(TCPWM0, TCPWM_SPEED_SENSOR);
+    printf("Val %lu\r\n", cap);
 }
 
 

@@ -12,6 +12,16 @@
 #include "utils.h"
 #include <stdint.h>
 
+#include <sys/_timeval.h>
+
+#include "cy8c624abzi_s2d44.h"
+#include "cy_tcpwm_counter.h"
+#include "cy_tcpwm_pwm.h"
+#include "cyhal.h"
+
+#include "cybsp.h"
+#include "cy_retarget_io.h"
+
 
 static const uint32_t crc32_table[256] = {
     0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3,
@@ -58,4 +68,35 @@ uint32_t crc32(char *buffer, uint32_t buffer_length) {
     }
 
     return ~crc;
+}
+
+
+
+/* Returns time in tv format */
+void xGetTimeTV( struct timeval* tv ) {
+    uint32_t sec1, usec;
+    uint32_t sec2;
+
+    do {
+        sec1 = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_SECONDS);
+        usec = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_MICROSECONDS);
+        sec2 = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_SECONDS);
+    } while (sec1 != sec2);
+
+    tv->tv_sec  = sec1; // Extract the microseconds
+    tv->tv_usec = usec; // Extract the seconds
+}
+
+
+/**
+ * @brief Sets the initial time of the counter
+ * 
+ * @param tv 
+ */
+void xSetTime( struct timeval* tv ) {
+    Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SECONDS);
+    Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_MICROSECONDS );
+
+    Cy_TCPWM_Counter_SetCounter(TCPWM0,TCPWM_SECONDS, tv->tv_sec);
+    Cy_TCPWM_Counter_SetCounter(TCPWM0,TCPWM_MICROSECONDS, tv->tv_usec);
 }

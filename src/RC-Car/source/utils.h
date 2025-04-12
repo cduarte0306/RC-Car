@@ -16,6 +16,14 @@
 #include <stdint.h>
 
 
+#include <sys/time.h>
+
+
+/* Scenario: Enable Counter */
+#define TCPWM_MICROSECONDS   (0UL)
+#define TCPWM_SECONDS        (1UL)
+
+
 typedef union
 {
     float    f32;
@@ -27,6 +35,7 @@ typedef union
 
 
 uint32_t crc32( char* buffer, uint32_t buffer_length );
+void xGetTimeTV( struct timeval* tv );
 
 
 #endif
