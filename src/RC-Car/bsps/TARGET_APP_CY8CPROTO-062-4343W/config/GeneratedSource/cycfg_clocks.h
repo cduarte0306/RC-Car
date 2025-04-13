@@ -5,8 +5,8 @@
  * Clock configuration
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.40.0
- * device-db 4.20.0.7450
- * mtb-pdl-cat1 3.14.0.38372
+ * device-db 4.22.0.7873
+ * mtb-pdl-cat1 3.16.0.40964
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or
@@ -43,9 +43,6 @@ extern "C" {
 #define peri_0_div_16_15_ENABLED 1U
 #define peri_0_div_16_15_HW CY_SYSCLK_DIV_16_BIT
 #define peri_0_div_16_15_NUM 15U
-#define peri_0_div_24_5_0_ENABLED 1U
-#define peri_0_div_24_5_0_HW CY_SYSCLK_DIV_24_5_BIT
-#define peri_0_div_24_5_0_NUM 0U
 #define CYBSP_CSD_CLK_DIV_ENABLED 1U
 #define CYBSP_CS_CLK_DIV_ENABLED CYBSP_CSD_CLK_DIV_ENABLED
 #define CYBSP_CSD_CLK_DIV_HW CY_SYSCLK_DIV_8_BIT
@@ -61,7 +58,6 @@ extern "C" {
 
 #if defined (CY_USING_HAL)
 extern const cyhal_resource_inst_t peri_0_div_16_15_obj;
-extern const cyhal_resource_inst_t peri_0_div_24_5_0_obj;
 extern const cyhal_resource_inst_t CYBSP_CSD_CLK_DIV_obj;
 #define CYBSP_CS_CLK_DIV_obj CYBSP_CSD_CLK_DIV_obj
 extern const cyhal_resource_inst_t peri_0_div_8_1_obj;

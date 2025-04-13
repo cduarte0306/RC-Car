@@ -5,8 +5,8 @@
  * Peripheral Hardware Block configuration
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.40.0
- * device-db 4.20.0.7450
- * mtb-pdl-cat1 3.14.0.38372
+ * device-db 4.22.0.7873
+ * mtb-pdl-cat1 3.16.0.40964
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or
@@ -30,51 +30,11 @@
 
 #define tcpwm_0_cnt_0_INPUT_DISABLED 0x7U
 #define tcpwm_0_cnt_1_INPUT_DISABLED 0x7U
-#define tcpwm_0_cnt_2_INPUT_DISABLED 0x7U
-#define tcpwm_0_cnt_3_INPUT_DISABLED 0x7U
 
 cy_stc_csd_context_t cy_csd_0_context =
 {
     .lockKey = CY_CSD_NONE_KEY,
 };
-
-#if defined (CY_USING_HAL)
-const cyhal_resource_inst_t lcd_0_drive_0_obj =
-{
-    .type = CYHAL_RSC_LCD,
-    .block_num = 0U,
-    .channel_num = 0,
-};
-#endif /* defined (CY_USING_HAL) */
-
-cy_stc_rtc_config_t srss_0_rtc_0_config =
-{
-    .sec = 0U,
-    .min = 0U,
-    .hour = 12U,
-    .amPm = CY_RTC_AM,
-    .hrFormat = CY_RTC_24_HOURS,
-    .dayOfWeek = CY_RTC_SATURDAY,
-    .date = 1U,
-    .month = CY_RTC_JANUARY,
-    .year = 0U,
-};
-
-#if defined (CY_USING_HAL)
-const cyhal_resource_inst_t srss_0_rtc_0_obj =
-{
-    .type = CYHAL_RSC_RTC,
-    .block_num = 0U,
-    .channel_num = 0U,
-};
-cyhal_rtc_configurator_t srss_0_rtc_0_hal_config =
-{
-    .resource = &srss_0_rtc_0_obj,
-    .config = &srss_0_rtc_0_config,
-    .dst_config = NULL,
-};
-#endif /* defined (CY_USING_HAL) */
-
 const cy_stc_tcpwm_counter_config_t tcpwm_0_cnt_0_config =
 {
     .period = 1000000,
@@ -110,8 +70,8 @@ const cyhal_resource_inst_t tcpwm_0_cnt_0_obj =
 #if defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL)
 const cyhal_clock_t tcpwm_0_cnt_0_clock =
 {
-    .block = CYHAL_CLOCK_BLOCK_PERIPHERAL_24_5BIT,
-    .channel = 0,
+    .block = CYHAL_CLOCK_BLOCK_PERIPHERAL_8BIT,
+    .channel = 1,
 #if defined (CY_USING_HAL)
     .reserved = false,
     .funcs = NULL,
@@ -132,8 +92,8 @@ const cyhal_timer_configurator_t tcpwm_0_cnt_0_hal_config =
 const mtb_hal_peri_div_t tcpwm_0_cnt_0_clock_ref =
 {
     .clk_dst = (en_clk_dst_t)PCLK_TCPWM0_CLOCKS0,
-    .div_type = CY_SYSCLK_DIV_24_5_BIT,
-    .div_num = 0,
+    .div_type = CY_SYSCLK_DIV_8_BIT,
+    .div_num = 1,
 };
 const mtb_hal_clock_t tcpwm_0_cnt_0_hal_clock =
 {
@@ -186,7 +146,7 @@ const cyhal_resource_inst_t tcpwm_0_cnt_1_obj =
 #if defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL)
 const cyhal_clock_t tcpwm_0_cnt_1_clock =
 {
-    .block = CYHAL_CLOCK_BLOCK_PERIPHERAL_24_5BIT,
+    .block = CYHAL_CLOCK_BLOCK_PERIPHERAL_8BIT,
     .channel = 0,
 #if defined (CY_USING_HAL)
     .reserved = false,
@@ -208,7 +168,7 @@ const cyhal_timer_configurator_t tcpwm_0_cnt_1_hal_config =
 const mtb_hal_peri_div_t tcpwm_0_cnt_1_clock_ref =
 {
     .clk_dst = (en_clk_dst_t)PCLK_TCPWM0_CLOCKS1,
-    .div_type = CY_SYSCLK_DIV_24_5_BIT,
+    .div_type = CY_SYSCLK_DIV_8_BIT,
     .div_num = 0,
 };
 const mtb_hal_clock_t tcpwm_0_cnt_1_hal_clock =
@@ -227,183 +187,16 @@ const mtb_hal_timer_configurator_t tcpwm_0_cnt_1_hal_config =
 };
 #endif /* defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_TIMER) */
 
-const cy_stc_tcpwm_counter_config_t tcpwm_0_cnt_2_config =
-{
-    .period = 100000,
-    .clockPrescaler = CY_TCPWM_COUNTER_PRESCALER_DIVBY_8,
-    .runMode = CY_TCPWM_COUNTER_CONTINUOUS,
-    .countDirection = CY_TCPWM_COUNTER_COUNT_UP,
-    .compareOrCapture = CY_TCPWM_COUNTER_MODE_CAPTURE,
-    .compare0 = 16384,
-    .compare1 = 16384,
-    .enableCompareSwap = false,
-    .interruptSources = CY_TCPWM_INT_ON_TC,
-    .captureInputMode = CY_TCPWM_INPUT_EITHEREDGE,
-    .captureInput = TCPWM0_CNT2_CAPTURE_VALUE,
-    .reloadInputMode = tcpwm_0_cnt_2_INPUT_DISABLED & 0x3U,
-    .reloadInput = CY_TCPWM_INPUT_0,
-    .startInputMode = tcpwm_0_cnt_2_INPUT_DISABLED & 0x3U,
-    .startInput = CY_TCPWM_INPUT_0,
-    .stopInputMode = tcpwm_0_cnt_2_INPUT_DISABLED & 0x3U,
-    .stopInput = CY_TCPWM_INPUT_0,
-    .countInputMode = CY_TCPWM_INPUT_RISINGEDGE,
-    .countInput = TCPWM0_CNT2_COUNT_VALUE,
-};
-
-#if defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE)
-const cyhal_resource_inst_t tcpwm_0_cnt_2_obj =
-{
-    .type = CYHAL_RSC_TCPWM,
-    .block_num = 0U,
-    .channel_num = 2U,
-};
-#endif /* defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE) */
-
-#if defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL)
-const cyhal_clock_t tcpwm_0_cnt_2_clock =
-{
-    .block = CYHAL_CLOCK_BLOCK_PERIPHERAL_8BIT,
-    .channel = 0,
-#if defined (CY_USING_HAL)
-    .reserved = false,
-    .funcs = NULL,
-#endif /* defined (CY_USING_HAL) */
-};
-#endif /* defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL) */
-
-#if defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE)
-const cyhal_timer_configurator_t tcpwm_0_cnt_2_hal_config =
-{
-    .resource = &tcpwm_0_cnt_2_obj,
-    .config = &tcpwm_0_cnt_2_config,
-    .clock = &tcpwm_0_cnt_2_clock,
-};
-#endif /* defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE) */
-
-#if defined (COMPONENT_MTB_HAL)
-const mtb_hal_peri_div_t tcpwm_0_cnt_2_clock_ref =
-{
-    .clk_dst = (en_clk_dst_t)PCLK_TCPWM0_CLOCKS2,
-    .div_type = CY_SYSCLK_DIV_8_BIT,
-    .div_num = 0,
-};
-const mtb_hal_clock_t tcpwm_0_cnt_2_hal_clock =
-{
-    .clock_ref = &tcpwm_0_cnt_2_clock_ref,
-    .interface = &mtb_hal_clock_peri_interface,
-};
-#endif /* defined (COMPONENT_MTB_HAL) */
-
-#if defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_TIMER)
-const mtb_hal_timer_configurator_t tcpwm_0_cnt_2_hal_config =
-{
-    .tcpwm_base = tcpwm_0_cnt_2_HW,
-    .clock = &tcpwm_0_cnt_2_hal_clock,
-    .tcpwm_cntnum = 2U,
-};
-#endif /* defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_TIMER) */
-
-const cy_stc_tcpwm_pwm_config_t tcpwm_0_cnt_3_config =
-{
-    .pwmMode = CY_TCPWM_PWM_MODE_PWM,
-    .clockPrescaler = CY_TCPWM_PWM_PRESCALER_DIVBY_1,
-    .pwmAlignment = CY_TCPWM_PWM_LEFT_ALIGN,
-    .deadTimeClocks = 0,
-    .runMode = CY_TCPWM_PWM_CONTINUOUS,
-    .period0 = 32768,
-    .period1 = 32768,
-    .enablePeriodSwap = false,
-    .compare0 = 16384,
-    .compare1 = 16384,
-    .enableCompareSwap = false,
-    .interruptSources = CY_TCPWM_INT_NONE,
-    .invertPWMOut = CY_TCPWM_PWM_INVERT_DISABLE,
-    .invertPWMOutN = CY_TCPWM_PWM_INVERT_DISABLE,
-    .killMode = CY_TCPWM_PWM_STOP_ON_KILL,
-    .swapInputMode = tcpwm_0_cnt_3_INPUT_DISABLED & 0x3U,
-    .swapInput = CY_TCPWM_INPUT_0,
-    .reloadInputMode = tcpwm_0_cnt_3_INPUT_DISABLED & 0x3U,
-    .reloadInput = CY_TCPWM_INPUT_0,
-    .startInputMode = tcpwm_0_cnt_3_INPUT_DISABLED & 0x3U,
-    .startInput = CY_TCPWM_INPUT_0,
-    .killInputMode = tcpwm_0_cnt_3_INPUT_DISABLED & 0x3U,
-    .killInput = CY_TCPWM_INPUT_0,
-    .countInputMode = tcpwm_0_cnt_3_INPUT_DISABLED & 0x3U,
-    .countInput = CY_TCPWM_INPUT_1,
-    .swapOverflowUnderflow = false,
-};
-
-#if defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE)
-const cyhal_resource_inst_t tcpwm_0_cnt_3_obj =
-{
-    .type = CYHAL_RSC_TCPWM,
-    .block_num = 0U,
-    .channel_num = 3U,
-};
-#endif /* defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE) */
-
-#if defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL)
-const cyhal_clock_t tcpwm_0_cnt_3_clock =
-{
-    .block = CYHAL_CLOCK_BLOCK_PERIPHERAL_8BIT,
-    .channel = 0,
-#if defined (CY_USING_HAL)
-    .reserved = false,
-    .funcs = NULL,
-#endif /* defined (CY_USING_HAL) */
-};
-#endif /* defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL) */
-
-#if defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE)
-const cyhal_pwm_configurator_t tcpwm_0_cnt_3_hal_config =
-{
-    .resource = &tcpwm_0_cnt_3_obj,
-    .config = &tcpwm_0_cnt_3_config,
-    .clock = &tcpwm_0_cnt_3_clock,
-};
-#endif /* defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE) */
-
-#if defined (COMPONENT_MTB_HAL)
-const mtb_hal_peri_div_t tcpwm_0_cnt_3_clock_ref =
-{
-    .clk_dst = (en_clk_dst_t)PCLK_TCPWM0_CLOCKS3,
-    .div_type = CY_SYSCLK_DIV_8_BIT,
-    .div_num = 0,
-};
-const mtb_hal_clock_t tcpwm_0_cnt_3_hal_clock =
-{
-    .clock_ref = &tcpwm_0_cnt_3_clock_ref,
-    .interface = &mtb_hal_clock_peri_interface,
-};
-#endif /* defined (COMPONENT_MTB_HAL) */
-
-#if defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_PWM)
-const mtb_hal_pwm_configurator_t tcpwm_0_cnt_3_hal_config =
-{
-    .base = tcpwm_0_cnt_3_HW,
-    .clock = &tcpwm_0_cnt_3_hal_clock,
-    .group = 0U,
-    .cntnum = 3U,
-    .max_count = 32768,
-};
-#endif /* defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_PWM) */
-
 void init_cycfg_peripherals(void)
 {
     Cy_SysClk_PeriphAssignDivider(PCLK_CSD_CLOCK, CY_SYSCLK_DIV_8_BIT, 0U);
-    Cy_SysClk_PeriphAssignDivider(PCLK_TCPWM0_CLOCKS0, CY_SYSCLK_DIV_24_5_BIT, 0U);
-    Cy_SysClk_PeriphAssignDivider(PCLK_TCPWM0_CLOCKS1, CY_SYSCLK_DIV_24_5_BIT, 0U);
-    Cy_SysClk_PeriphAssignDivider(PCLK_TCPWM0_CLOCKS2, CY_SYSCLK_DIV_8_BIT, 0U);
-    Cy_SysClk_PeriphAssignDivider(PCLK_TCPWM0_CLOCKS3, CY_SYSCLK_DIV_8_BIT, 0U);
+    Cy_SysClk_PeriphAssignDivider(PCLK_TCPWM0_CLOCKS0, CY_SYSCLK_DIV_8_BIT, 1U);
+    Cy_SysClk_PeriphAssignDivider(PCLK_TCPWM0_CLOCKS1, CY_SYSCLK_DIV_8_BIT, 0U);
 }
 void reserve_cycfg_peripherals(void)
 {
 #if defined (CY_USING_HAL)
-    cyhal_hwmgr_reserve(&lcd_0_drive_0_obj);
-    cyhal_hwmgr_reserve(&srss_0_rtc_0_obj);
     cyhal_hwmgr_reserve(&tcpwm_0_cnt_0_obj);
     cyhal_hwmgr_reserve(&tcpwm_0_cnt_1_obj);
-    cyhal_hwmgr_reserve(&tcpwm_0_cnt_2_obj);
-    cyhal_hwmgr_reserve(&tcpwm_0_cnt_3_obj);
 #endif /* defined (CY_USING_HAL) */
 }

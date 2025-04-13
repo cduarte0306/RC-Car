@@ -5,8 +5,8 @@
  * Clock configuration
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.40.0
- * device-db 4.20.0.7450
- * mtb-pdl-cat1 3.14.0.38372
+ * device-db 4.22.0.7873
+ * mtb-pdl-cat1 3.16.0.40964
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or
@@ -35,12 +35,6 @@ const cyhal_resource_inst_t peri_0_div_16_15_obj =
     .block_num = peri_0_div_16_15_HW,
     .channel_num = peri_0_div_16_15_NUM,
 };
-const cyhal_resource_inst_t peri_0_div_24_5_0_obj =
-{
-    .type = CYHAL_RSC_CLOCK,
-    .block_num = peri_0_div_24_5_0_HW,
-    .channel_num = peri_0_div_24_5_0_NUM,
-};
 const cyhal_resource_inst_t CYBSP_CSD_CLK_DIV_obj =
 {
     .type = CYHAL_RSC_CLOCK,
@@ -66,14 +60,11 @@ void init_cycfg_clocks(void)
     Cy_SysClk_PeriphDisableDivider(CY_SYSCLK_DIV_16_BIT, 15U);
     Cy_SysClk_PeriphSetDivider(CY_SYSCLK_DIV_16_BIT, 15U, 0U);
     Cy_SysClk_PeriphEnableDivider(CY_SYSCLK_DIV_16_BIT, 15U);
-    Cy_SysClk_PeriphDisableDivider(CY_SYSCLK_DIV_24_5_BIT, 0U);
-    Cy_SysClk_PeriphSetFracDivider(CY_SYSCLK_DIV_24_5_BIT, 0U, 99U, 0U);
-    Cy_SysClk_PeriphEnableDivider(CY_SYSCLK_DIV_24_5_BIT, 0U);
     Cy_SysClk_PeriphDisableDivider(CY_SYSCLK_DIV_8_BIT, 0U);
     Cy_SysClk_PeriphSetDivider(CY_SYSCLK_DIV_8_BIT, 0U, 255U);
     Cy_SysClk_PeriphEnableDivider(CY_SYSCLK_DIV_8_BIT, 0U);
     Cy_SysClk_PeriphDisableDivider(CY_SYSCLK_DIV_8_BIT, 1U);
-    Cy_SysClk_PeriphSetDivider(CY_SYSCLK_DIV_8_BIT, 1U, 0U);
+    Cy_SysClk_PeriphSetDivider(CY_SYSCLK_DIV_8_BIT, 1U, 99U);
     Cy_SysClk_PeriphEnableDivider(CY_SYSCLK_DIV_8_BIT, 1U);
     Cy_SysClk_PeriphDisableDivider(CY_SYSCLK_DIV_8_BIT, 7U);
     Cy_SysClk_PeriphSetDivider(CY_SYSCLK_DIV_8_BIT, 7U, 0U);
@@ -83,7 +74,6 @@ void reserve_cycfg_clocks(void)
 {
 #if defined (CY_USING_HAL)
     cyhal_hwmgr_reserve(&peri_0_div_16_15_obj);
-    cyhal_hwmgr_reserve(&peri_0_div_24_5_0_obj);
     cyhal_hwmgr_reserve(&CYBSP_CSD_CLK_DIV_obj);
     cyhal_hwmgr_reserve(&peri_0_div_8_1_obj);
     cyhal_hwmgr_reserve(&CYBSP_TRACE_CLK_DIV_obj);

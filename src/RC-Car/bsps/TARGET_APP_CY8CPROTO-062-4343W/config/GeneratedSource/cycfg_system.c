@@ -5,8 +5,8 @@
  * System configuration
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.40.0
- * device-db 4.20.0.7450
- * mtb-pdl-cat1 3.14.0.38372
+ * device-db 4.22.0.7873
+ * mtb-pdl-cat1 3.16.0.40964
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or
@@ -53,10 +53,6 @@
 #define CY_CFG_SYSCLK_CLKHF0_DIVIDER CY_SYSCLK_CLKHF_NO_DIVIDE
 #define CY_CFG_SYSCLK_CLKHF0_FREQ_MHZ 100UL
 #define CY_CFG_SYSCLK_CLKHF0_CLKPATH CY_SYSCLK_CLKHF_IN_CLKPATH0
-#define CY_CFG_SYSCLK_CLKHF2_ENABLED 1
-#define CY_CFG_SYSCLK_CLKHF2_DIVIDER CY_SYSCLK_CLKHF_NO_DIVIDE
-#define CY_CFG_SYSCLK_CLKHF2_FREQ_MHZ 100UL
-#define CY_CFG_SYSCLK_CLKHF2_CLKPATH CY_SYSCLK_CLKHF_IN_CLKPATH0
 #define CY_CFG_SYSCLK_ILO_ENABLED 1
 #define CY_CFG_SYSCLK_ILO_HIBERNATE true
 #define CY_CFG_SYSCLK_IMO_ENABLED 1
@@ -684,12 +680,6 @@ __STATIC_INLINE void Cy_SysClk_ClkHf0Init(void)
     Cy_SysClk_ClkHfSetSource(0U, CY_CFG_SYSCLK_CLKHF0_CLKPATH);
     Cy_SysClk_ClkHfSetDivider(0U, CY_SYSCLK_CLKHF_NO_DIVIDE);
 }
-__STATIC_INLINE void Cy_SysClk_ClkHf2Init(void)
-{
-    Cy_SysClk_ClkHfSetSource(CY_CFG_SYSCLK_CLKHF2, CY_CFG_SYSCLK_CLKHF2_CLKPATH);
-    Cy_SysClk_ClkHfSetDivider(CY_CFG_SYSCLK_CLKHF2, CY_SYSCLK_CLKHF_NO_DIVIDE);
-    Cy_SysClk_ClkHfEnable(CY_CFG_SYSCLK_CLKHF2);
-}
 __STATIC_INLINE void Cy_SysClk_IloInit(void)
 {
     /* The WDT is unlocked in the default startup code */
@@ -1153,9 +1143,10 @@ void init_cycfg_system(void)
     
     #endif /* (!defined(CY_DEVICE_SECURE)) */
     
-#if defined(CY_CFG_SYSCLK_ECO_PRESCALER_ENABLED)
+    #if defined(CY_CFG_SYSCLK_ECO_PRESCALER_ENABLED)
         Cy_SysClk_EcoPrescalerInit();
-#endif /* defined(CY_CFG_SYSCLK_ECO_PRESCALER_ENABLED) */
+    #endif /* defined (CY_CFG_SYSCLK_ECO_PRESCALER_ENABLED) */
+    
     #ifdef CY_CFG_SYSCLK_CLKALTSYSTICK_ENABLED
         Cy_SysClk_ClkAltSysTickInit();
     #endif

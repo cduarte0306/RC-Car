@@ -81,7 +81,7 @@ void xGetTimeTV( struct timeval* tv ) {
         sec1 = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_SECONDS);
         usec = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_MICROSECONDS);
         sec2 = Cy_TCPWM_Counter_GetCounter(TCPWM0, TCPWM_SECONDS);
-    } while (sec1 != sec2);
+    } while (sec1 == sec2);
 
     tv->tv_sec  = sec1; // Extract the microseconds
     tv->tv_usec = usec; // Extract the seconds

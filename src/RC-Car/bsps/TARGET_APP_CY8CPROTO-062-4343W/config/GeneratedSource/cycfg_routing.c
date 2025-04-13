@@ -5,8 +5,8 @@
  * Establishes all necessary connections between hardware elements.
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.40.0
- * device-db 4.20.0.7450
- * mtb-pdl-cat1 3.14.0.38372
+ * device-db 4.22.0.7873
+ * mtb-pdl-cat1 3.16.0.40964
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or
@@ -33,10 +33,7 @@
 
 void init_cycfg_routing(void)
 {
-    Cy_TrigMux_Connect(TRIG_IN_MUX_2_HSIOM_TR_OUT10, TRIG_OUT_MUX_2_TCPWM0_TR_IN7, false, TRIGGER_TYPE_LEVEL);
-    Cy_TrigMux_Connect(TRIG_IN_MUX_2_TCPWM0_TR_COMPARE_MATCH3, TRIG_OUT_MUX_2_TCPWM0_TR_IN9, false, TRIGGER_TYPE_EDGE);
-    Cy_TrigMux_Connect(TRIG_IN_MUX_2_TCPWM0_TR_OVERFLOW0, TRIG_OUT_MUX_2_TCPWM0_TR_IN8, false, TRIGGER_TYPE_EDGE);
-    Cy_TrigMux_Connect(TRIG_IN_MUX_4_TCPWM0_TR_OVERFLOW2, TRIG_OUT_MUX_4_HSIOM_TR_IO_OUTPUT0, false, TRIGGER_TYPE_EDGE);
+    Cy_TrigMux_Connect(TRIG_IN_MUX_2_TCPWM0_TR_OVERFLOW0, TRIG_OUT_MUX_2_TCPWM0_TR_IN9, false, TRIGGER_TYPE_EDGE);
     HSIOM->AMUX_SPLIT_CTL[2] = HSIOM_V2_AMUX_SPLIT_CTL_SWITCH_AA_SL_Msk |
         HSIOM_V2_AMUX_SPLIT_CTL_SWITCH_AA_SR_Msk |
         HSIOM_V2_AMUX_SPLIT_CTL_SWITCH_BB_SL_Msk |

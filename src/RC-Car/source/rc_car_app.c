@@ -56,6 +56,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/_timeval.h>
 #include <task.h>
 #include <timers.h>
 #include <queue.h>
@@ -66,6 +67,8 @@
 #include "network_driver.h"
 #include "portmacro.h"
 #include "utils.h"
+#include <sys/time.h>
+
 
 #if defined (CY_USING_HAL)
     #include "cyhal_hwmgr.h"
@@ -106,8 +109,8 @@ int rc_car_init( void )
 {
     BaseType_t ret;
 
-    Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SPEED_SENSOR);
-    Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SPEED_REFERENCE );
+    // Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SPEED_SENSOR);
+    // Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SPEED_REFERENCE );
 
     set_network_callback( process_command );  // Event based command processing
     ret = xTaskCreate(network_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
@@ -151,8 +154,10 @@ void rc_car_app_task(void *arg)
 
 
 static void read_speed( void ) {
-    uint32_t cap = Cy_TCPWM_Counter_GetCapture(TCPWM0, TCPWM_SPEED_SENSOR);
-    printf("Val %lu\r\n", cap);
+    struct timeval tv;
+    xGetTimeTV(&tv);
+
+    printf("Time: %lu:%lu\r\n", tv.tv_sec, tv.tv_usec);
 }
 
 

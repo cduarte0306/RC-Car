@@ -5,8 +5,8 @@
  * Peripheral Hardware Block configuration
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.40.0
- * device-db 4.20.0.7450
- * mtb-pdl-cat1 3.14.0.38372
+ * device-db 4.22.0.7873
+ * mtb-pdl-cat1 3.16.0.40964
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or
@@ -32,11 +32,8 @@
 #include "cycfg_notices.h"
 #include "cy_sysclk.h"
 #include "cy_csd.h"
-#include "cy_seglcd.h"
-#include "cycfg_routing.h"
-#include "cy_rtc.h"
 #include "cy_tcpwm_counter.h"
-#include "cy_tcpwm_pwm.h"
+#include "cycfg_routing.h"
 
 #if defined (CY_USING_HAL)
 #include "cyhal_hwmgr.h"
@@ -91,21 +88,6 @@ extern "C" {
 #define CintB_PORT_NUM 7u
 #define CYBSP_CSD_HW CSD0
 #define CYBSP_CSD_IRQ csd_interrupt_IRQn
-#define lcd_0_drive_0_ENABLED 1U
-#define lcd_0_drive_0_HW LCD0
-#define lcd_0_drive_0_FRAME_RATE 60
-#define lcd_0_drive_0_CONTRAST 60
-#define lcd_0_drive_0_CLOCK_FREQ 32768
-#define lcd_0_drive_0_CONST_MODIFIER const
-#define srss_0_rtc_0_ENABLED 1U
-#define srss_0_rtc_0_10_MONTH_OFFSET (28U)
-#define srss_0_rtc_0_MONTH_OFFSET (24U)
-#define srss_0_rtc_0_10_DAY_OFFSET (20U)
-#define srss_0_rtc_0_DAY_OFFSET (16U)
-#define srss_0_rtc_0_1000_YEAR_OFFSET (12U)
-#define srss_0_rtc_0_100_YEAR_OFFSET (8U)
-#define srss_0_rtc_0_10_YEAR_OFFSET (4U)
-#define srss_0_rtc_0_YEAR_OFFSET (0U)
 #define tcpwm_0_cnt_0_ENABLED 1U
 #define tcpwm_0_cnt_0_HW TCPWM0
 #define tcpwm_0_cnt_0_NUM 0UL
@@ -114,29 +96,8 @@ extern "C" {
 #define tcpwm_0_cnt_1_HW TCPWM0
 #define tcpwm_0_cnt_1_NUM 1UL
 #define tcpwm_0_cnt_1_MASK (1UL << 1)
-#define tcpwm_0_cnt_2_ENABLED 1U
-#define tcpwm_0_cnt_2_HW TCPWM0
-#define tcpwm_0_cnt_2_NUM 2UL
-#define tcpwm_0_cnt_2_MASK (1UL << 2)
-#define tcpwm_0_cnt_2_IRQ tcpwm_0_interrupts_2_IRQn
-#define tcpwm_0_cnt_3_ENABLED 1U
-#define tcpwm_0_cnt_3_HW TCPWM0
-#define tcpwm_0_cnt_3_NUM 3UL
-#define tcpwm_0_cnt_3_MASK (1UL << 3)
 
 extern cy_stc_csd_context_t cy_csd_0_context;
-
-#if defined (CY_USING_HAL)
-extern const cyhal_resource_inst_t lcd_0_drive_0_obj;
-#endif /* defined (CY_USING_HAL) */
-
-extern cy_stc_rtc_config_t srss_0_rtc_0_config;
-
-#if defined (CY_USING_HAL)
-extern const cyhal_resource_inst_t srss_0_rtc_0_obj;
-extern cyhal_rtc_configurator_t srss_0_rtc_0_hal_config;
-#endif /* defined (CY_USING_HAL) */
-
 extern const cy_stc_tcpwm_counter_config_t tcpwm_0_cnt_0_config;
 
 #if defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE)
@@ -182,52 +143,6 @@ extern const mtb_hal_clock_t tcpwm_0_cnt_1_hal_clock;
 #if defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_TIMER)
 extern const mtb_hal_timer_configurator_t tcpwm_0_cnt_1_hal_config;
 #endif /* defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_TIMER) */
-
-extern const cy_stc_tcpwm_counter_config_t tcpwm_0_cnt_2_config;
-
-#if defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE)
-extern const cyhal_resource_inst_t tcpwm_0_cnt_2_obj;
-#endif /* defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE) */
-
-#if defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL)
-extern const cyhal_clock_t tcpwm_0_cnt_2_clock;
-#endif /* defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL) */
-
-#if defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE)
-extern const cyhal_timer_configurator_t tcpwm_0_cnt_2_hal_config;
-#endif /* defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE) */
-
-#if defined (COMPONENT_MTB_HAL)
-extern const mtb_hal_peri_div_t tcpwm_0_cnt_2_clock_ref;
-extern const mtb_hal_clock_t tcpwm_0_cnt_2_hal_clock;
-#endif /* defined (COMPONENT_MTB_HAL) */
-
-#if defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_TIMER)
-extern const mtb_hal_timer_configurator_t tcpwm_0_cnt_2_hal_config;
-#endif /* defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_TIMER) */
-
-extern const cy_stc_tcpwm_pwm_config_t tcpwm_0_cnt_3_config;
-
-#if defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE)
-extern const cyhal_resource_inst_t tcpwm_0_cnt_3_obj;
-#endif /* defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE) */
-
-#if defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL)
-extern const cyhal_clock_t tcpwm_0_cnt_3_clock;
-#endif /* defined(CY_USING_HAL_LITE) || defined (CY_USING_HAL) */
-
-#if defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE)
-extern const cyhal_pwm_configurator_t tcpwm_0_cnt_3_hal_config;
-#endif /* defined (CY_USING_HAL) || defined(CY_USING_HAL_LITE) */
-
-#if defined (COMPONENT_MTB_HAL)
-extern const mtb_hal_peri_div_t tcpwm_0_cnt_3_clock_ref;
-extern const mtb_hal_clock_t tcpwm_0_cnt_3_hal_clock;
-#endif /* defined (COMPONENT_MTB_HAL) */
-
-#if defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_PWM)
-extern const mtb_hal_pwm_configurator_t tcpwm_0_cnt_3_hal_config;
-#endif /* defined (COMPONENT_MTB_HAL) && (MTB_HAL_DRIVER_AVAILABLE_PWM) */
 
 void init_cycfg_peripherals(void);
 void reserve_cycfg_peripherals(void);

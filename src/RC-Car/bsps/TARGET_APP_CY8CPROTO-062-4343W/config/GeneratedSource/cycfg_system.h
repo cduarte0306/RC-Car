@@ -5,8 +5,8 @@
  * System configuration
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.40.0
- * device-db 4.20.0.7450
- * mtb-pdl-cat1 3.14.0.38372
+ * device-db 4.22.0.7873
+ * mtb-pdl-cat1 3.16.0.40964
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or
@@ -52,9 +52,6 @@ extern "C" {
 #define srss_0_clock_0_hfclk_0_ENABLED 1U
 #define CY_CFG_SYSCLK_CLKHF0 0UL
 #define CY_CFG_SYSCLK_CLKHF0_CLKPATH_NUM 0UL
-#define srss_0_clock_0_hfclk_2_ENABLED 1U
-#define CY_CFG_SYSCLK_CLKHF2 2UL
-#define CY_CFG_SYSCLK_CLKHF2_CLKPATH_NUM 0UL
 #define srss_0_clock_0_ilo_0_ENABLED 1U
 #define srss_0_clock_0_imo_0_ENABLED 1U
 #define srss_0_clock_0_lfclk_0_ENABLED 1U

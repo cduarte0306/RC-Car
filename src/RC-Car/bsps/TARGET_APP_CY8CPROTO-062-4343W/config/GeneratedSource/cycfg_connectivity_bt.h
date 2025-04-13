@@ -5,8 +5,8 @@
  * Connectivity BT configuration
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.40.0
- * device-db 4.20.0.7450
- * mtb-pdl-cat1 3.14.0.38372
+ * device-db 4.22.0.7873
+ * mtb-pdl-cat1 3.16.0.40964
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or
@@ -44,6 +44,10 @@ extern "C" {
 #define CYCFG_BT_HOST_WAKE_IRQ_EVENT CYBT_WAKE_ACTIVE_LOW
 #define CYCFG_BT_DEV_WAKE_GPIO CYBSP_BT_DEVICE_WAKE
 #define CYCFG_BT_DEV_WAKE_POLARITY CYBT_WAKE_ACTIVE_LOW
+#define CYCFG_BT_HOST_WAKE_PORT_NUM CYBSP_BT_HOST_WAKE_PORT_NUM
+#define CYCFG_BT_HOST_WAKE_PIN CYBSP_BT_HOST_WAKE_PIN
+#define CYCFG_BT_DEVICE_WAKE_PORT_NUM CYBSP_BT_DEVICE_WAKE_PORT_NUM
+#define CYCFG_BT_DEVICE_WAKE_PIN CYBSP_BT_DEVICE_WAKE_PIN
 
 #if defined(__cplusplus)
 }
