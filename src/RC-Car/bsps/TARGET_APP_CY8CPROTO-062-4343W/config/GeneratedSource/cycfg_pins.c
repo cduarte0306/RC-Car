@@ -106,13 +106,13 @@ const cyhal_resource_inst_t USER_LED_obj =
 };
 #endif /* defined (CY_USING_HAL) || (CY_USING_HAL_LITE) */
 
-const cy_stc_gpio_pin_config_t CYBSP_CSD_TX_config =
+const cy_stc_gpio_pin_config_t ENCODER_PULSE_PIN_config =
 {
     .outVal = 1,
-    .driveMode = CY_GPIO_DM_ANALOG,
-    .hsiom = CYBSP_CSD_TX_HSIOM,
-    .intEdge = CY_GPIO_INTR_DISABLE,
-    .intMask = 0UL,
+    .driveMode = CY_GPIO_DM_HIGHZ,
+    .hsiom = ENCODER_PULSE_PIN_HSIOM,
+    .intEdge = CY_GPIO_INTR_RISING,
+    .intMask = 1UL,
     .vtrip = CY_GPIO_VTRIP_CMOS,
     .slewRate = CY_GPIO_SLEW_FAST,
     .driveSel = CY_GPIO_DRIVE_1_2,
@@ -124,11 +124,11 @@ const cy_stc_gpio_pin_config_t CYBSP_CSD_TX_config =
 };
 
 #if defined (CY_USING_HAL) || (CY_USING_HAL_LITE)
-const cyhal_resource_inst_t CYBSP_CSD_TX_obj =
+const cyhal_resource_inst_t ENCODER_PULSE_PIN_obj =
 {
     .type = CYHAL_RSC_GPIO,
-    .block_num = CYBSP_CSD_TX_PORT_NUM,
-    .channel_num = CYBSP_CSD_TX_PIN,
+    .block_num = ENCODER_PULSE_PIN_PORT_NUM,
+    .channel_num = ENCODER_PULSE_PIN_PIN,
 };
 #endif /* defined (CY_USING_HAL) || (CY_USING_HAL_LITE) */
 
@@ -473,9 +473,20 @@ const cyhal_resource_inst_t CYBSP_CSD_SLD4_obj =
 void init_cycfg_pins(void)
 {
     Cy_GPIO_Pin_Init(USER_LED_PORT, USER_LED_PIN, &USER_LED_config);
+    Cy_GPIO_Pin_Init(ENCODER_PULSE_PIN_PORT, ENCODER_PULSE_PIN_PIN, &ENCODER_PULSE_PIN_config);
     Cy_GPIO_Pin_Init(CYBSP_SWO_PORT, CYBSP_SWO_PIN, &CYBSP_SWO_config);
     Cy_GPIO_Pin_Init(CYBSP_SWDIO_PORT, CYBSP_SWDIO_PIN, &CYBSP_SWDIO_config);
     Cy_GPIO_Pin_Init(CYBSP_SWDCK_PORT, CYBSP_SWDCK_PIN, &CYBSP_SWDCK_config);
+    Cy_GPIO_Pin_Init(CYBSP_CINA_PORT, CYBSP_CINA_PIN, &CYBSP_CINA_config);
+    Cy_GPIO_Pin_Init(CYBSP_CINB_PORT, CYBSP_CINB_PIN, &CYBSP_CINB_config);
+    Cy_GPIO_Pin_Init(CYBSP_CMOD_PORT, CYBSP_CMOD_PIN, &CYBSP_CMOD_config);
+    Cy_GPIO_Pin_Init(CYBSP_CSD_BTN0_PORT, CYBSP_CSD_BTN0_PIN, &CYBSP_CSD_BTN0_config);
+    Cy_GPIO_Pin_Init(CYBSP_CSD_BTN1_PORT, CYBSP_CSD_BTN1_PIN, &CYBSP_CSD_BTN1_config);
+    Cy_GPIO_Pin_Init(CYBSP_CSD_SLD0_PORT, CYBSP_CSD_SLD0_PIN, &CYBSP_CSD_SLD0_config);
+    Cy_GPIO_Pin_Init(CYBSP_CSD_SLD1_PORT, CYBSP_CSD_SLD1_PIN, &CYBSP_CSD_SLD1_config);
+    Cy_GPIO_Pin_Init(CYBSP_CSD_SLD2_PORT, CYBSP_CSD_SLD2_PIN, &CYBSP_CSD_SLD2_config);
+    Cy_GPIO_Pin_Init(CYBSP_CSD_SLD3_PORT, CYBSP_CSD_SLD3_PIN, &CYBSP_CSD_SLD3_config);
+    Cy_GPIO_Pin_Init(CYBSP_CSD_SLD4_PORT, CYBSP_CSD_SLD4_PIN, &CYBSP_CSD_SLD4_config);
 }
 void reserve_cycfg_pins(void)
 {
@@ -483,7 +494,7 @@ void reserve_cycfg_pins(void)
     cyhal_hwmgr_reserve(&CYBSP_WCO_IN_obj);
     cyhal_hwmgr_reserve(&CYBSP_WCO_OUT_obj);
     cyhal_hwmgr_reserve(&USER_LED_obj);
-    cyhal_hwmgr_reserve(&CYBSP_CSD_TX_obj);
+    cyhal_hwmgr_reserve(&ENCODER_PULSE_PIN_obj);
     cyhal_hwmgr_reserve(&CYBSP_SWO_obj);
     cyhal_hwmgr_reserve(&CYBSP_SWDIO_obj);
     cyhal_hwmgr_reserve(&CYBSP_SWDCK_obj);

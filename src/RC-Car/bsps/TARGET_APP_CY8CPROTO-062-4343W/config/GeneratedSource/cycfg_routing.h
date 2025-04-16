@@ -37,23 +37,16 @@ extern "C" {
 
 #define ioss_0_port_0_pin_0_ANALOG P0_0_SRSS_WCO_IN
 #define ioss_0_port_0_pin_1_ANALOG P0_1_SRSS_WCO_OUT
-#define ioss_0_port_1_pin_0_HSIOM HSIOM_SEL_AMUXA
+#define ioss_0_port_1_pin_0_HSIOM P1_0_PERI_TR_IO_INPUT2
 #define ioss_0_port_6_pin_4_HSIOM P6_4_CPUSS_SWJ_SWO_TDO
 #define ioss_0_port_6_pin_6_HSIOM P6_6_CPUSS_SWJ_SWDIO_TMS
 #define ioss_0_port_6_pin_7_HSIOM P6_7_CPUSS_SWJ_SWCLK_TCLK
-#define ioss_0_port_7_pin_1_HSIOM HSIOM_SEL_AMUXA
-#define ioss_0_port_7_pin_2_HSIOM HSIOM_SEL_AMUXA
-#define ioss_0_port_7_pin_7_HSIOM HSIOM_SEL_AMUXA
-#define ioss_0_port_8_pin_1_HSIOM HSIOM_SEL_AMUXA
-#define ioss_0_port_8_pin_2_HSIOM HSIOM_SEL_AMUXA
-#define ioss_0_port_8_pin_3_HSIOM HSIOM_SEL_AMUXA
-#define ioss_0_port_8_pin_4_HSIOM HSIOM_SEL_AMUXA
-#define ioss_0_port_8_pin_5_HSIOM HSIOM_SEL_AMUXA
-#define ioss_0_port_8_pin_6_HSIOM HSIOM_SEL_AMUXA
-#define ioss_0_port_8_pin_7_HSIOM HSIOM_SEL_AMUXA
+#define ENCODER_PULSE_PIN_digital_in_0_TRIGGER_IN TRIG_IN_MUX_2_HSIOM_TR_OUT2
 #define tcpwm_0_cnt_0_tr_overflow_0_TRIGGER_IN TRIG_IN_MUX_2_TCPWM0_TR_OVERFLOW0
 #define tcpwm_0_cnt_1_count_0_TRIGGER_OUT TRIG_OUT_MUX_2_TCPWM0_TR_IN9
+#define tcpwm_0_cnt_2_count_0_TRIGGER_OUT TRIG_OUT_MUX_2_TCPWM0_TR_IN8
 #define TCPWM0_CNT1_COUNT_VALUE 0xb
+#define TCPWM0_CNT2_COUNT_VALUE 0xa
 
 void init_cycfg_routing(void);
 

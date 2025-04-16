@@ -44,11 +44,13 @@
 #include "cy_syslib.h"
 #include "cy_tcpwm.h"
 #include "cy_tcpwm_counter.h"
+#include "cy_tcpwm_pwm.h"
 #include "cy_utils.h"
 #include "cycfg_pins.h"
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
+// #include <cassert>
 #include <inttypes.h>
 
 /* FreeRTOS header file */
@@ -74,6 +76,8 @@
     #include "cyhal_hwmgr.h"
 #endif /* defined (CY_USING_HAL) */
 
+#include "cycfg_peripherals.h"
+
 
 #define UDP_SERVER_TASK_STACK_SIZE                (5 * 1024)
 #define UDP_SERVER_TASK_PRIORITY                  (1)
@@ -83,6 +87,8 @@
 
 #define ULTRASONIC_CONVERSION                     (0.001379f)
 
+#define NUM_REGS                                  (256)
+
 
 /* Command definitions */
 typedef enum __attribute__((__packed__)) 
@@ -90,12 +96,32 @@ typedef enum __attribute__((__packed__))
     CMD_NOOP = 0x00,
     CMD_DIR,
     CMD_STEER,
+    CMD_READ_REG,
 } commands_t;
 
+typedef struct {
+    val_type_t reg_val;
+    uint8_t rule;  // If True, then read only
+} reg_map_t;
+
+
+static float speed;
+static volatile uint32_t capture;
+static volatile uint32_t last_capture;
 
 TaskHandle_t network_handle;
+
+static reg_map_t register_map[NUM_REGS] = {
+    {0, 0},  // Register 0
+    {0, 0},  // Register 1
+    {0, 0},  // Register 2
+};
+
 static bool process_command( client_req_t* req );
-static void read_speed( void );
+static void read_speed( void *arg );
+static void encoder_pulse_handler( void *callback_arg, cyhal_gpio_event_t event );
+static bool read_reg( REGISTERS_t reg, val_type_t* val );
+static void send_reply( reply_t* reply );
 
 
 /**
@@ -109,8 +135,10 @@ int rc_car_init( void )
 {
     BaseType_t ret;
 
-    // Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SPEED_SENSOR);
-    // Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SPEED_REFERENCE );
+    // Start the frequency counter
+    Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SPEED_SENSOR);
+    Cy_TCPWM_TriggerStart_Single(TCPWM0, TCPWM_SPEED_SENSOR);
+    Cy_TCPWM_Counter_Init(TCPWM0, TCPWM_SPEED_SENSOR, &tcpwm_0_cnt_2_config);
 
     set_network_callback( process_command );  // Event based command processing
     ret = xTaskCreate(network_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
@@ -120,6 +148,12 @@ int rc_car_init( void )
     }
 
     ret = xTaskCreate(rc_car_app_task, "RC task", UDP_SERVER_TASK_STACK_SIZE, NULL,
+               UDP_SERVER_TASK_PRIORITY, &network_handle);
+    if ( ret != pdPASS ) {
+        return -1;
+    }
+
+    ret = xTaskCreate(read_speed, "speed reader", UDP_SERVER_TASK_STACK_SIZE, NULL,
                UDP_SERVER_TASK_PRIORITY, &network_handle);
     if ( ret != pdPASS ) {
         return -1;
@@ -147,17 +181,21 @@ void rc_car_app_task(void *arg)
     /* Handle communication with the client */
     while (true)
     {
-        read_speed();
-        vTaskDelay( 1 );
+        speed = capture / 0.1;
+        printf("Capture %.2f\r\n", speed);
+        vTaskDelay( 50 );
     }
 }
 
 
-static void read_speed( void ) {
-    struct timeval tv;
-    xGetTimeTV(&tv);
+static void read_speed( void *arg ) {
+    while( true ) {
+        capture = Cy_TCPWM_Counter_GetCounter( TCPWM0, TCPWM_SPEED_SENSOR );
 
-    printf("Time: %lu:%lu\r\n", tv.tv_sec, tv.tv_usec);
+        // Reset the counter
+        Cy_TCPWM_PWM_SetCounter( TCPWM0, TCPWM_SPEED_SENSOR, 0 );
+        vTaskDelay( 100 );
+    }
 }
 
 
@@ -172,17 +210,49 @@ static void read_speed( void ) {
 static bool process_command( client_req_t* req ) {
     if ( req == NULL )
     {
-        return -1;
+        return false;
     }
+
+    reply_t reply;
 
     switch ( req->payload.command )
     {
         case CMD_DIR   : printf("Direction command received: %i\r\n",   req->payload.data.i32); break;
         case CMD_STEER : printf("Steer command received: %i\r\n",       req->payload.data.i32); break;
+        case CMD_READ_REG: {
+            if (req->payload.data.u32 > REG_MAX) {
+                reply.state = false;
+            }
+
+            reply.data.u32 = register_map[req->payload.data.u32].reg_val.u32;
+            break;
+        }
+            
         default:         printf("ERROR: Command %u not recognized\r\n", req->payload.command ); return false;
     }
+
+    send_reply( &reply );    
+    return true;
+}
+
+
+static void send_reply( reply_t* reply ) {
+    CY_ASSERT(reply != NULL);
     
-    return 0;
+    
+}
+
+
+/**
+ * @brief Encoder pulse interrupt handler
+ * 
+ */
+static void __attribute__((used)) encoder_pulse_handler( void *callback_arg, cyhal_gpio_event_t event ) {
+    Cy_GPIO_ClearInterrupt(GPIO_PRT5, 0);
+    NVIC_ClearPendingIRQ(ioss_interrupts_gpio_1_IRQn);
+
+    // Grab capture from TCPWM
+    capture = Cy_TCPWM_Counter_GetCapture(TCPWM0, TCPWM_SPEED_SENSOR);
 }
 
 /* [] END OF FILE */

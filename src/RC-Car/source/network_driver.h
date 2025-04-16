@@ -92,6 +92,11 @@ typedef struct __attribute__((__packed__))
     uint32_t   crc_32;
 } client_req_t;
 
+typedef struct __attribute__((__packed__)) {
+    val_type_t data;
+    uint8_t state;    
+} reply_t;
+
 
 typedef bool (*message_reception_callback)( client_req_t* );
 

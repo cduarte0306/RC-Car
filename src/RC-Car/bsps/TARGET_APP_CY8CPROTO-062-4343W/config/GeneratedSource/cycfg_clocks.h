@@ -40,6 +40,9 @@
 extern "C" {
 #endif /* defined(__cplusplus) */
 
+#define peri_0_div_16_0_ENABLED 1U
+#define peri_0_div_16_0_HW CY_SYSCLK_DIV_16_BIT
+#define peri_0_div_16_0_NUM 0U
 #define peri_0_div_16_15_ENABLED 1U
 #define peri_0_div_16_15_HW CY_SYSCLK_DIV_16_BIT
 #define peri_0_div_16_15_NUM 15U
@@ -57,6 +60,7 @@ extern "C" {
 #define CYBSP_TRACE_CLK_DIV_NUM 7U
 
 #if defined (CY_USING_HAL)
+extern const cyhal_resource_inst_t peri_0_div_16_0_obj;
 extern const cyhal_resource_inst_t peri_0_div_16_15_obj;
 extern const cyhal_resource_inst_t CYBSP_CSD_CLK_DIV_obj;
 #define CYBSP_CS_CLK_DIV_obj CYBSP_CSD_CLK_DIV_obj

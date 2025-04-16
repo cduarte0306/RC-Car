@@ -44,7 +44,9 @@
 *******************************************************************************/
 
 /* Header file includes */
+#include "cy_syslib.h"
 #include "cy_tcpwm_counter.h"
+#include "cy_utils.h"
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
@@ -56,6 +58,9 @@
 /* UDP server task header file. */
 #include "rc_car_app.h"
 #include "utils.h"
+
+#include "cycfg_peripherals.h"
+
 
 
 /* Include serial flash library and QSPI memory configurations only for the
@@ -106,12 +111,12 @@ int main(void)
     {
         CY_ASSERT(0);
     }
-
+ 
     /* Enable global interrupts */
     
-
     /* Initialize retarget-io to use the debug UART port */
-    cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX, CY_RETARGET_IO_BAUDRATE);
+    result = cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX, CY_RETARGET_IO_BAUDRATE);
+    CY_ASSERT( result == CY_RSLT_SUCCESS );
 
     /* Init QSPI and enable XIP to get the Wi-Fi firmware from the QSPI NOR flash */
     #if defined(CY_DEVICE_PSOC6A512K)
@@ -123,19 +128,19 @@ int main(void)
     cy_serial_flash_qspi_enable_xip(true);
     #endif
 
-    // init_cycfg_all();
-
     Cy_TCPWM_TriggerStart(TCPWM0, (1UL << 0) | (1UL << 1));
+
+    Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_MICROSECONDS );
+    Cy_TCPWM_TriggerStart_Single(TCPWM0, TCPWM_MICROSECONDS);
+    Cy_TCPWM_Counter_Init(TCPWM0, TCPWM_MICROSECONDS, &tcpwm_0_cnt_0_config);
 
     Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_SECONDS);
     Cy_TCPWM_TriggerStart_Single(TCPWM0, TCPWM_SECONDS);
-    
-    Cy_TCPWM_Counter_Enable(TCPWM0, TCPWM_MICROSECONDS );
-    Cy_TCPWM_TriggerStart_Single(TCPWM0, TCPWM_MICROSECONDS);
-    
+    Cy_TCPWM_Counter_Init(TCPWM0, TCPWM_SECONDS, &tcpwm_0_cnt_1_config);    
+
     Cy_TCPWM_Counter_SetCounter(TCPWM0, TCPWM_SECONDS, 0);
     Cy_TCPWM_Counter_SetCounter(TCPWM0, TCPWM_MICROSECONDS, 0);
-
+    
     /* \x1b[2J\x1b[;H - ANSI ESC sequence to clear screen. */
     printf("\x1b[2J\x1b[;H");
     printf("===============================================================\n");

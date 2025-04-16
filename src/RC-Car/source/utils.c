@@ -12,6 +12,7 @@
 #include "utils.h"
 #include <stdint.h>
 
+#include <stdio.h>
 #include <sys/_timeval.h>
 
 #include "cy8c624abzi_s2d44.h"
@@ -69,7 +70,6 @@ uint32_t crc32(char *buffer, uint32_t buffer_length) {
 
     return ~crc;
 }
-
 
 
 /* Returns time in tv format */
