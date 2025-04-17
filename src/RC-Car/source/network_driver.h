@@ -97,13 +97,19 @@ typedef struct __attribute__((__packed__)) {
     uint8_t state;    
 } reply_t;
 
-
 typedef bool (*message_reception_callback)( client_req_t* );
+
+typedef struct {
+    message_reception_callback wrt_callback;
+    message_reception_callback rd_callback;    
+} network_callbacks_t;
+
 
 /*******************************************************************************
 * Function Prototypes
 ********************************************************************************/
-void set_network_callback(message_reception_callback _callback);
+void set_network_callback(network_callbacks_t* _callback);
+bool send_read_reply(reply_t* reply);
 void network_task(void *arg);
 
 #endif /* UDP_SERVER_H_ */

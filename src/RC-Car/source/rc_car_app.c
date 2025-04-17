@@ -97,6 +97,7 @@ typedef enum __attribute__((__packed__))
     CMD_DIR,
     CMD_STEER,
     CMD_READ_REG,
+    CMD_WRITE_REG,
 } commands_t;
 
 typedef struct {
@@ -117,10 +118,10 @@ static reg_map_t register_map[NUM_REGS] = {
     {0, 0},  // Register 2
 };
 
-static bool process_command( client_req_t* req );
+static bool process_wrt_command( client_req_t* req );
+static bool process_rd_command( client_req_t* req );
 static void read_speed( void *arg );
 static void encoder_pulse_handler( void *callback_arg, cyhal_gpio_event_t event );
-static bool read_reg( REGISTERS_t reg, val_type_t* val );
 static void send_reply( reply_t* reply );
 
 
@@ -140,7 +141,12 @@ int rc_car_init( void )
     Cy_TCPWM_TriggerStart_Single(TCPWM0, TCPWM_SPEED_SENSOR);
     Cy_TCPWM_Counter_Init(TCPWM0, TCPWM_SPEED_SENSOR, &tcpwm_0_cnt_2_config);
 
-    set_network_callback( process_command );  // Event based command processing
+    network_callbacks_t callbacks = {
+        .rd_callback = process_rd_command,
+        .wrt_callback = process_wrt_command
+    };
+
+    set_network_callback( &callbacks );  // Event based command processing
     ret = xTaskCreate(network_task, "Network task", UDP_SERVER_TASK_STACK_SIZE, NULL,
                UDP_SERVER_TASK_PRIORITY, &network_handle);
     if ( ret != pdPASS ) {
@@ -207,7 +213,7 @@ static void read_speed( void *arg ) {
  * @return true: Command processed successfully
  * @return false: Failed to process command
  */
-static bool process_command( client_req_t* req ) {
+static bool process_wrt_command( client_req_t* req ) {
     if ( req == NULL )
     {
         return false;
@@ -217,30 +223,65 @@ static bool process_command( client_req_t* req ) {
 
     switch ( req->payload.command )
     {
-        case CMD_DIR   : printf("Direction command received: %i\r\n",   req->payload.data.i32); break;
-        case CMD_STEER : printf("Steer command received: %i\r\n",       req->payload.data.i32); break;
-        case CMD_READ_REG: {
-            if (req->payload.data.u32 > REG_MAX) {
+        case CMD_DIR   :
+            reply.state = true;
+            break;
+        case CMD_STEER : 
+            reply.state = true;
+            break;
+        
+        case CMD_WRITE_REG: {
+            if (req->payload.data.u32 >= REG_MAX || register_map[req->payload.data.u32].rule ) {
                 reply.state = false;
+                break;
+            }
+            break;
+        }
+            
+        default: printf("ERROR: Command %u not recognized\r\n", req->payload.command ); return false;
+    }
+    return true;
+}
+
+
+static bool process_rd_command( client_req_t* req ) {
+    if ( req == NULL ) {
+        return false;
+    }
+
+    reply_t reply;
+
+    switch ( req->payload.command ) {
+        case CMD_READ_REG: {
+            if (req->payload.data.u32 >= REG_MAX) {
+                reply.state = false;
+                break;
             }
 
             reply.data.u32 = register_map[req->payload.data.u32].reg_val.u32;
             break;
         }
-            
-        default:         printf("ERROR: Command %u not recognized\r\n", req->payload.command ); return false;
     }
 
+    // Send a reply to the client
     send_reply( &reply );    
     return true;
 }
 
 
+/**
+ * @brief Handler to transmit replies to client
+ * 
+ * @param reply Pointer to the reply struct
+ */
 static void send_reply( reply_t* reply ) {
     CY_ASSERT(reply != NULL);
     
-    
-}
+    bool ret = send_read_reply(reply);
+    if (!ret) {
+        printf("Failed to send reply to client");
+    }
+}   
 
 
 /**

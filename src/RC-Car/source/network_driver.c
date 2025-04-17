@@ -155,6 +155,7 @@ typedef struct __attribute__((__packed__))
 ********************************************************************************/
 static cy_rslt_t create_wifi_ap(void);
 static cy_rslt_t create_udp_server_socket(void);
+static cy_rslt_t create_udp_read_data_socket( void );
 static cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg);
 static void wifi_event_callback(cy_wcm_event_t event, cy_wcm_event_data_t *event_data);
 
@@ -166,7 +167,10 @@ void print_heap_usage(char *msg);
 ********************************************************************************/
 /* Secure socket variables. */
 cy_socket_sockaddr_t udp_server_addr;
+cy_socket_sockaddr_t udp_read_server_addr;
+
 cy_socket_t server_handle;
+cy_socket_t rd_server_handle;
 
 cy_socket_sockaddr_t client_addr;
 uint32_t client_addr_len = sizeof(client_addr);
@@ -176,7 +180,8 @@ wifi_connection_states_t connection_state = DISCONNECTED;
 /* Connection timeout timer */
 QueueHandle_t queue;
 
-message_reception_callback callback = NULL;
+message_reception_callback wrt_callback = NULL;
+message_reception_callback rd_callback = NULL;
 
 
 /*******************************************************************************
@@ -212,9 +217,10 @@ cyhal_gpio_callback_data_t cb_data =
  * 
  * @param _callback Pointer to the callback
  */
-void set_network_callback(message_reception_callback _callback)
+void set_network_callback(network_callbacks_t* _callback)
 {
-    callback = _callback;
+    wrt_callback = _callback->wrt_callback;
+    rd_callback  = _callback->rd_callback;
 }
 
 
@@ -233,7 +239,7 @@ void set_network_callback(message_reception_callback _callback)
  *******************************************************************************/
 void network_task(void *arg)
 {
-    CY_ASSERT( callback != NULL );
+    CY_ASSERT( wrt_callback != NULL );
 
     cy_rslt_t result;
 
@@ -287,6 +293,13 @@ void network_task(void *arg)
         CY_ASSERT(0);
     }
 
+    result = create_udp_read_data_socket();
+    if (result != CY_RSLT_SUCCESS)
+    {
+        printf("UDP Server Socket creation failed. Error: %" PRIu32 "\n", result);
+        CY_ASSERT(0);
+    }
+
     server_ack_t ack;
 
     /* Handle communication with the client */
@@ -306,12 +319,36 @@ void network_task(void *arg)
 
 
 /**
+ * @brief Handles read replies by transmitting data to the read UDP port.
+ * 
+ * @param reply 
+ * @return true 
+ * @return false 
+ */
+bool send_read_reply(reply_t* reply) {
+    CY_ASSERT(reply != NULL);
+    cy_rslt_t result;
+
+    uint32_t bytes_sent = 0;
+
+    result = cy_socket_sendto(rd_server_handle, (void *const)&reply, sizeof(reply_t), CY_SOCKET_FLAGS_NONE,
+                            &client_addr, client_addr_len, &bytes_sent);
+    
+    if (result != CY_RSLT_SUCCESS || bytes_sent != sizeof(reply_t)) {
+        return false;    
+    }
+
+    return true;
+}
+
+
+/**
  * @brief Create a wifi access point. The PSoC will host a Wifi access point, to which a computer will
  * have to connect in order to communicate with the device wirelessly.
  * 
  * @return cy_rslt_t 
  */
-cy_rslt_t create_wifi_ap( void )
+static cy_rslt_t create_wifi_ap( void )
 {
     cy_rslt_t result;
     cy_wcm_ap_config_t ap_conf;
@@ -358,7 +395,7 @@ cy_rslt_t create_wifi_ap( void )
  *  Function to create a socket and set the socket options
  *
  *******************************************************************************/
-cy_rslt_t create_udp_server_socket(void)
+static cy_rslt_t create_udp_server_socket(void)
 {
     cy_rslt_t result;
 
@@ -390,6 +427,48 @@ cy_rslt_t create_udp_server_socket(void)
     result = cy_socket_bind(server_handle, &udp_server_addr, sizeof(udp_server_addr));
     if (result == CY_RSLT_SUCCESS) {
         printf("Socket bound to port: %d\n", udp_server_addr.port);
+    }
+
+    return result;
+}
+
+
+/**
+ * @brief This creates a socket spefifically for data readings. This offloads
+ * 
+ * @return cy_rslt_t 
+ */
+static cy_rslt_t create_udp_read_data_socket( void ) {
+    cy_rslt_t result;
+
+    /* Variable used to set socket options. */
+    cy_socket_opt_callback_t udp_recv_option = {
+            .callback = udp_server_recv_handler,
+            .arg = NULL
+    };
+
+    udp_read_server_addr.port = UDP_SERVER_PORT; // Your server port
+    udp_read_server_addr.ip_address.version = CY_SOCKET_IP_VER_V4;
+    udp_read_server_addr.ip_address.ip.v4   = CY_SOCKET_INADDR_ANY;
+
+    /* Create a UDP server socket. */
+    result = cy_socket_create(CY_SOCKET_DOMAIN_AF_INET, CY_SOCKET_TYPE_DGRAM, CY_SOCKET_IPPROTO_UDP, &rd_server_handle);
+    if (result != CY_RSLT_SUCCESS) {
+        return result;
+    }
+
+    /* Register the callback function to handle messages received from UDP client. */
+    result = cy_socket_setsockopt(rd_server_handle, CY_SOCKET_SOL_SOCKET,
+            CY_SOCKET_SO_RECEIVE_CALLBACK,
+            &udp_recv_option, sizeof(cy_socket_opt_callback_t));
+    if (result != CY_RSLT_SUCCESS) {
+        return result;
+    }
+
+    /* Bind the UDP socket created to Server IP address and port. */
+    result = cy_socket_bind(rd_server_handle, &udp_read_server_addr, sizeof(udp_read_server_addr));
+    if (result == CY_RSLT_SUCCESS) {
+        printf("Socket bound to port: %d\n", udp_read_server_addr.port);
     }
 
     return result;
@@ -440,7 +519,7 @@ cy_rslt_t udp_server_recv_handler(cy_socket_t socket_handle, void *arg) {
     }
 
     /* Process the incoming network command and submit a reply to the client */
-    ret = callback( req );
+    ret = wrt_callback( req );
     if ( !ret ) {
         reply.payload.command     = 0;
         reply.payload.sequence_id = 0;
